@@ -3,3 +3,12 @@ target/
 *.iml
 *.log
 .DS_Store
+
+# Eclipse
+.project
+.classpath
+.factorypath
+.settings/
+
+# VS Code
+.vscode/
