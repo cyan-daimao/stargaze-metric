@@ -1,0 +1,30 @@
+spring:
+  config:
+    import:
+      - "nacos:arch-base.yaml?group=DEFAULT_GROUP&namespace=dev"
+      - "nacos:stargaze-metric.yaml?group=DEFAULT_GROUP&namespace=dev"
+  cloud:
+    nacos:
+      server-addr: 10.0.0.2:8848
+      username: nacos
+      password: nacos
+      config:
+        file-extension: yaml
+        namespace: dev
+      discovery:
+        ephemeral: true
+        namespace: dev
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://10.0.0.2:5432/stargaze?currentSchema=public
+    username: postgres
+    password: 123456
+  data:
+    redis:
+      host: 10.0.0.2
+      port: 6379
+
+# 跨服务调用 dataset
+feign:
+  stargaze-dataset:
+    url: http://stargaze-dataset
