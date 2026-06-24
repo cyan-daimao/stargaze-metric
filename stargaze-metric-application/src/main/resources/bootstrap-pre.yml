@@ -17,7 +17,7 @@ spring:
   # 元数据库 PostgreSQL(观星元数据 + pgvector 向量)
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://10.0.0.2:5432/stargaze?currentSchema=public
+    url: jdbc:postgresql://10.0.0.2:5432/stargaze?currentSchema=stargaze_metric
     username: postgres
     password: postgres
   # MyBatis-Plus
