@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * 指标版本(口径变更审计)。
@@ -41,8 +41,8 @@ public class MetricVersion {
     private String createdBy;
 
     /** 创建时间 */
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     /** 逻辑删除时间 */
-    private LocalDateTime deletedAt;
+    private OffsetDateTime deletedAt;
 }

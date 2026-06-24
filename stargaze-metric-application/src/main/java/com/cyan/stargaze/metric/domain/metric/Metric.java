@@ -11,7 +11,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * 业务指标(充血模型,口径统一)。
@@ -68,13 +68,13 @@ public class Metric {
     private String updatedBy;
 
     /** 创建时间 */
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     /** 更新时间 */
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 
     /** 逻辑删除时间 */
-    private LocalDateTime deletedAt;
+    private OffsetDateTime deletedAt;
 
     private void validate() {
         Assert.notBlank(this.workspaceId, new SilentException("空间 ID 不能为空"));
@@ -93,8 +93,8 @@ public class Metric {
         Assert.isNull(existing, new SilentException("指标名已存在"));
         this.status = MetricStatus.DRAFT;
         this.version = 1;
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        this.createdAt = OffsetDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
         return repository.save(this);
     }
 
@@ -106,7 +106,7 @@ public class Metric {
         Assert.isTrue(this.status == MetricStatus.DRAFT,
                 new SilentException("已发布指标不可直接修改,请走版本变更"));
         validate();
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
         return repository.update(this);
     }
 
@@ -118,7 +118,7 @@ public class Metric {
                 new SilentException("仅草稿状态可发布"));
         this.status = MetricStatus.PUBLISHED;
         this.version = (this.version == null ? 1 : this.version) + 1;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
         return repository.update(this);
     }
 
@@ -129,7 +129,7 @@ public class Metric {
         Assert.isTrue(this.status == MetricStatus.PUBLISHED,
                 new SilentException("仅已发布指标可废弃"));
         this.status = MetricStatus.DEPRECATED;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
         return repository.update(this);
     }
 

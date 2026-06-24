@@ -10,7 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /** 指标绑定表 DO(metric_binding)。 */
 @Data
@@ -30,10 +30,10 @@ public class MetricBindingDO {
     @TableField("dsl_override")
     private String dslOverride;
     @TableField("created_at")
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
     @TableField("updated_at")
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
     @TableField("deleted_at")
     @TableLogic(value = "null", delval = "now()")
-    private LocalDateTime deletedAt;
+    private OffsetDateTime deletedAt;
 }

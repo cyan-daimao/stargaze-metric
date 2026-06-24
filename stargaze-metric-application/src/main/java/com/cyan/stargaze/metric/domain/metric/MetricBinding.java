@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * 指标-数据集字段绑定(同一指标可绑定多个数据集,不同物理实现)。
@@ -37,13 +37,13 @@ public class MetricBinding {
     private String dslOverride;
 
     /** 创建时间 */
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     /** 更新时间 */
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 
     /** 逻辑删除时间 */
-    private LocalDateTime deletedAt;
+    private OffsetDateTime deletedAt;
 
     public void validate() {
         Assert.notBlank(this.metricId, new SilentException("指标 ID 不能为空"));

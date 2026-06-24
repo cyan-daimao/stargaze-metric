@@ -12,7 +12,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /** 维度表 DO(dimension)。 */
 @Data
@@ -42,10 +42,10 @@ public class DimensionDO {
     @TableField("created_by")
     private Long createdBy;
     @TableField("created_at")
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
     @TableField("updated_at")
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
     @TableField("deleted_at")
     @TableLogic(value = "null", delval = "now()")
-    private LocalDateTime deletedAt;
+    private OffsetDateTime deletedAt;
 }

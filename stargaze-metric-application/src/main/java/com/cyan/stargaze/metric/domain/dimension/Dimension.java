@@ -10,7 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * 业务维度(充血模型,可跨数据集)。
@@ -55,13 +55,13 @@ public class Dimension {
     private String createdBy;
 
     /** 创建时间 */
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     /** 更新时间 */
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 
     /** 逻辑删除时间 */
-    private LocalDateTime deletedAt;
+    private OffsetDateTime deletedAt;
 
     private void validate() {
         Assert.notBlank(this.workspaceId, new SilentException("空间 ID 不能为空"));
@@ -74,21 +74,21 @@ public class Dimension {
         Dimension existing = repository.findByName(this.workspaceId, this.name);
         Assert.isNull(existing, new SilentException("维度名已存在"));
         this.status = MetricStatus.DRAFT;
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        this.createdAt = OffsetDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
         return repository.save(this);
     }
 
     public Dimension update(DimensionRepository repository) {
         Assert.notBlank(this.id, new SilentException("维度 ID 不能为空"));
         validate();
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
         return repository.update(this);
     }
 
     public Dimension publish(DimensionRepository repository) {
         this.status = MetricStatus.PUBLISHED;
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
         return repository.update(this);
     }
 

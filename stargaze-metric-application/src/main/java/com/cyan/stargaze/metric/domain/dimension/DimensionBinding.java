@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * 维度-数据集字段绑定(一个维度可绑定多个数据集的不同物理字段)。
@@ -37,13 +37,13 @@ public class DimensionBinding {
     private String expr;
 
     /** 创建时间 */
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     /** 更新时间 */
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 
     /** 逻辑删除时间 */
-    private LocalDateTime deletedAt;
+    private OffsetDateTime deletedAt;
 
     public void validate() {
         Assert.notBlank(this.dimensionId, new SilentException("维度 ID 不能为空"));

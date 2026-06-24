@@ -10,7 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * 指标×维度组合合法性表 DO(metric_dimension_compat)。
@@ -31,10 +31,10 @@ public class MetricDimensionCompatDO {
     @TableField("allowed")
     private Boolean allowed;
     @TableField("created_at")
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
     @TableField("updated_at")
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
     @TableField("deleted_at")
     @TableLogic(value = "null", delval = "now()")
-    private LocalDateTime deletedAt;
+    private OffsetDateTime deletedAt;
 }
