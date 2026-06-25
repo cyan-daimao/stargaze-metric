@@ -164,7 +164,7 @@ public class MetricServiceImpl implements MetricService {
         Assert.notNull(datasetClient, new SilentException("数据集客户端未初始化"));
         var resp = datasetClient.resolveField(cmd.getDatasetId(), cmd.getFieldId());
         Assert.notNull(resp, new SilentException("字段校验失败:数据集服务无响应"));
-        Assert.isTrue(resp.getCode() == 0 && resp.getData() != null,
+        Assert.isTrue(resp.getCode() == 200 && resp.getData() != null,
                 new SilentException("字段校验失败:" + resp.getMessage()));
         return metricBindingRepository.save(binding);
     }
@@ -217,7 +217,7 @@ public class MetricServiceImpl implements MetricService {
         Map<String, Set<String>> nameToDatasets = new HashMap<>();
         for (String datasetId : datasetIds) {
             var resp = datasetClient.listFields(datasetId);
-            if (resp == null || resp.getCode() != 0 || resp.getData() == null) {
+            if (resp == null || resp.getCode() != 200 || resp.getData() == null) {
                 continue;
             }
             for (DatasetFieldDTO field : resp.getData()) {
@@ -255,7 +255,7 @@ public class MetricServiceImpl implements MetricService {
                     .setSkippedDuplicates(new ArrayList<>())
                     .setErrors(new ArrayList<>());
             var resp = datasetClient.listFields(datasetId);
-            if (resp == null || resp.getCode() != 0 || resp.getData() == null) {
+            if (resp == null || resp.getCode() != 200 || resp.getData() == null) {
                 result.getErrors().add("数据集不可用或服务无响应");
                 results.add(result);
                 continue;

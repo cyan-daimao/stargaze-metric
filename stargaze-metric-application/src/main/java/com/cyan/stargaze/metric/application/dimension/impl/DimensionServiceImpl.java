@@ -86,7 +86,7 @@ public class DimensionServiceImpl implements DimensionService {
         binding.validate();
         var resp = datasetClient.resolveField(cmd.getDatasetId(), cmd.getFieldId());
         Assert.notNull(resp, new SilentException("字段校验失败:数据集服务无响应"));
-        Assert.isTrue(resp.getCode() == 0 && resp.getData() != null,
+        Assert.isTrue(resp.getCode() == 200 && resp.getData() != null,
                 new SilentException("字段校验失败:" + resp.getMessage()));
         return dimensionBindingRepository.save(binding);
     }
