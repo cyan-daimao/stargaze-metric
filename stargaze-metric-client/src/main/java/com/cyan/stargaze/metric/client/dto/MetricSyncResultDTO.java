@@ -30,4 +30,13 @@ public class MetricSyncResultDTO {
 
     /** 失败原因 */
     private List<String> errors;
+
+    /** 成功创建的维度列表 */
+    private List<DimensionDTO> createdDimensions;
+
+    /** 因名称重复跳过的维度 */
+    private List<String> skippedDimensionDuplicates;
+
+    /** 维度同步失败原因 */
+    private List<String> dimensionErrors;
 }
