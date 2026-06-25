@@ -26,7 +26,4 @@ spring:
       host: 10.0.0.2
       port: 6379
 
-# 跨服务调用 dataset
-feign:
-  stargaze-dataset:
-    url: http://stargaze-dataset
+# 跨服务调用 dataset 通过 Nacos 服务发现，无需显式配置 url
