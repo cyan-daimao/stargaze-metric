@@ -299,6 +299,12 @@ public class MetricServiceImpl implements MetricService {
                 String metricName = field.getAlias() != null && !field.getAlias().isBlank()
                         ? field.getAlias() : field.getOriginName();
                 String code = toCode(metricName);
+                String expression = "SUM([" + field.getOriginName() + "])";
+                // 优先按数据集+字段+表达式判断是否已存在,避免同字段改名后重复创建
+                if (metricRepository.findByDatasetAndExpression(workspaceId, datasetId, expression) != null) {
+                    result.getSkippedDuplicates().add(metricName);
+                    continue;
+                }
                 if (metricRepository.findByName(workspaceId, metricName) != null
                         || metricRepository.findByCode(workspaceId, code) != null) {
                     result.getSkippedDuplicates().add(metricName);
@@ -315,7 +321,7 @@ public class MetricServiceImpl implements MetricService {
                             .setFormat(MetricFormat.NUMBER)
                             .setType(MetricType.ATOMIC)
                             .setMeasureKind(MeasureKind.SUM)
-                            .setExpression("SUM([" + field.getOriginName() + "])")
+                            .setExpression(expression)
                             .setPrimaryDatasetId(datasetId)
                             .setPrimaryFieldId(field.getId())
                             .setBoundDatasetIds(Collections.emptyList())

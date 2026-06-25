@@ -19,6 +19,11 @@ public interface MetricRepository {
 
     Metric findByCode(String workspaceId, String code);
 
+    /**
+     * 按主数据集与表达式查找已存在的指标（一键同步去重用）
+     */
+    Metric findByDatasetAndExpression(String workspaceId, String primaryDatasetId, String expression);
+
     List<Metric> listByWorkspace(String workspaceId, MetricStatus status);
 
     List<Metric> listByWorkspace(String workspaceId, String keyword, MetricStatus status, String folder);
