@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.cyan.stargaze.metric.enums.MeasureKind;
+import com.cyan.stargaze.metric.enums.MetricFormat;
 import com.cyan.stargaze.metric.enums.MetricStatus;
 import com.cyan.stargaze.metric.enums.MetricType;
 import lombok.AllArgsConstructor;
@@ -28,16 +29,28 @@ public class MetricDO {
     private Long workspaceId;
     @TableField("name")
     private String name;
+    @TableField("code")
+    private String code;
     @TableField("business_name")
     private String businessName;
+    @TableField("description")
+    private String description;
+    @TableField("folder")
+    private String folder;
+    @TableField("format")
+    private MetricFormat format;
     @TableField("type")
     private MetricType type;
     @TableField("measure_kind")
     private MeasureKind measureKind;
+    @TableField("expression")
+    private String expression;
     @TableField("dsl")
     private String dsl;
     @TableField("caliber")
     private String caliber;
+    @TableField("primary_dataset_id")
+    private Long primaryDatasetId;
     @TableField("owner_id")
     private Long ownerId;
     @TableField("status")

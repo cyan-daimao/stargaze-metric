@@ -30,6 +30,9 @@ public class MetricBindingCmd {
     @NotBlank(message = "字段 ID 不能为空")
     private String fieldId;
 
+    /** 是否主数据集 */
+    private Boolean primary;
+
     /** 该数据集下 DSL 覆盖 */
     private String dslOverride;
 }

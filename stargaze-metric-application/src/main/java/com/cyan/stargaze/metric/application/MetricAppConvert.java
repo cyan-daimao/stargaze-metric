@@ -10,6 +10,7 @@ import com.cyan.stargaze.metric.domain.dimension.DimensionBinding;
 import com.cyan.stargaze.metric.domain.metric.Metric;
 import com.cyan.stargaze.metric.domain.metric.MetricBinding;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
 /**
@@ -23,6 +24,8 @@ public interface MetricAppConvert {
 
     MetricAppConvert INSTANCE = Mappers.getMapper(MetricAppConvert.class);
 
+    @Mapping(target = "dsl", source = "expression")
+    @Mapping(target = "caliber", source = "description")
     Metric toMetric(MetricCmd cmd);
 
     MetricBinding toMetricBinding(MetricBindingCmd cmd);

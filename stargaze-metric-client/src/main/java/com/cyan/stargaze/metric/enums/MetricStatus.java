@@ -17,9 +17,23 @@ public enum MetricStatus {
     DRAFT("draft"),
     /** 已发布(口径冻结,不可改 DSL) */
     PUBLISHED("published"),
-    /** 已废弃 */
+    /** 已下线 */
+    OFFLINE("offline"),
+    /** 已废弃（兼容旧数据） */
     DEPRECATED("deprecated");
 
     @EnumValue
     private final String code;
+
+    public static MetricStatus fromCode(String code) {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+        for (MetricStatus status : values()) {
+            if (status.code.equalsIgnoreCase(code)) {
+                return status;
+            }
+        }
+        return null;
+    }
 }

@@ -33,6 +33,9 @@ public class MetricBinding {
     /** 字段 ID */
     private String fieldId;
 
+    /** 是否主数据集 */
+    private Boolean primary;
+
     /** 该数据集下 DSL 覆盖(可空) */
     private String dslOverride;
 
@@ -49,5 +52,9 @@ public class MetricBinding {
         Assert.notBlank(this.metricId, new SilentException("指标 ID 不能为空"));
         Assert.notBlank(this.datasetId, new SilentException("数据集 ID 不能为空"));
         Assert.notBlank(this.fieldId, new SilentException("字段 ID 不能为空"));
+    }
+
+    public boolean isPrimary() {
+        return this.primary != null && this.primary;
     }
 }

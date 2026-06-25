@@ -5,12 +5,14 @@ import com.cyan.stargaze.metric.domain.dimension.Dimension;
 import com.cyan.stargaze.metric.domain.dimension.DimensionBinding;
 import com.cyan.stargaze.metric.domain.metric.Metric;
 import com.cyan.stargaze.metric.domain.metric.MetricBinding;
+import com.cyan.stargaze.metric.domain.metric.MetricDimensionBinding;
 import com.cyan.stargaze.metric.domain.metric.MetricDimensionCompat;
 import com.cyan.stargaze.metric.domain.metric.MetricVersion;
 import com.cyan.stargaze.metric.infra.persistence.dimension.dos.DimensionBindingDO;
 import com.cyan.stargaze.metric.infra.persistence.dimension.dos.DimensionDO;
 import com.cyan.stargaze.metric.infra.persistence.metric.dos.MetricBindingDO;
 import com.cyan.stargaze.metric.infra.persistence.metric.dos.MetricDO;
+import com.cyan.stargaze.metric.infra.persistence.metric.dos.MetricDimensionBindingDO;
 import com.cyan.stargaze.metric.infra.persistence.metric.dos.MetricDimensionCompatDO;
 import com.cyan.stargaze.metric.infra.persistence.metric.dos.MetricVersionDO;
 import com.cyan.stargaze.metric.infra.util.IdUtil;
@@ -31,6 +33,7 @@ public abstract class MetricInfraConvert {
 
     @Mapping(target = "id", source = "id", qualifiedByName = "l2s")
     @Mapping(target = "workspaceId", source = "workspaceId", qualifiedByName = "l2s")
+    @Mapping(target = "primaryDatasetId", source = "primaryDatasetId", qualifiedByName = "l2s")
     @Mapping(target = "ownerId", source = "ownerId", qualifiedByName = "l2s")
     @Mapping(target = "createdBy", source = "createdBy", qualifiedByName = "l2s")
     @Mapping(target = "updatedBy", source = "updatedBy", qualifiedByName = "l2s")
@@ -38,6 +41,7 @@ public abstract class MetricInfraConvert {
 
     @Mapping(target = "id", source = "id", qualifiedByName = "s2l")
     @Mapping(target = "workspaceId", source = "workspaceId", qualifiedByName = "s2l")
+    @Mapping(target = "primaryDatasetId", source = "primaryDatasetId", qualifiedByName = "s2l")
     @Mapping(target = "ownerId", source = "ownerId", qualifiedByName = "s2l")
     @Mapping(target = "createdBy", source = "createdBy", qualifiedByName = "s2l")
     @Mapping(target = "updatedBy", source = "updatedBy", qualifiedByName = "s2l")
@@ -54,6 +58,20 @@ public abstract class MetricInfraConvert {
     @Mapping(target = "datasetId", source = "datasetId", qualifiedByName = "s2l")
     @Mapping(target = "fieldId", source = "fieldId", qualifiedByName = "s2l")
     public abstract MetricBindingDO toMetricBindingDO(MetricBinding binding);
+
+    @Mapping(target = "id", source = "id", qualifiedByName = "l2s")
+    @Mapping(target = "metricId", source = "metricId", qualifiedByName = "l2s")
+    @Mapping(target = "datasetId", source = "datasetId", qualifiedByName = "l2s")
+    @Mapping(target = "fieldId", source = "fieldId", qualifiedByName = "l2s")
+    public abstract MetricDimensionBinding toMetricDimensionBinding(MetricDimensionBindingDO doObj);
+
+    @Mapping(target = "id", source = "id", qualifiedByName = "s2l")
+    @Mapping(target = "metricId", source = "metricId", qualifiedByName = "s2l")
+    @Mapping(target = "datasetId", source = "datasetId", qualifiedByName = "s2l")
+    @Mapping(target = "fieldId", source = "fieldId", qualifiedByName = "s2l")
+    public abstract MetricDimensionBindingDO toMetricDimensionBindingDO(MetricDimensionBinding binding);
+
+    public abstract List<MetricDimensionBinding> toMetricDimensionBindingList(List<MetricDimensionBindingDO> doList);
 
     @Mapping(target = "id", source = "id", qualifiedByName = "l2s")
     @Mapping(target = "workspaceId", source = "workspaceId", qualifiedByName = "l2s")

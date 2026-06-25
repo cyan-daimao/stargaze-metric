@@ -10,6 +10,7 @@ import com.cyan.stargaze.metric.domain.dimension.DimensionBinding;
 import com.cyan.stargaze.metric.domain.metric.Metric;
 import com.cyan.stargaze.metric.domain.metric.MetricBinding;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
 import java.util.List;
@@ -25,6 +26,8 @@ public interface MetricAdapterConvert {
 
     MetricAdapterConvert INSTANCE = Mappers.getMapper(MetricAdapterConvert.class);
 
+    @Mapping(target = "dsl", ignore = true)
+    @Mapping(target = "caliber", ignore = true)
     MetricDTO toMetricDTO(Metric metric);
 
     List<MetricDTO> toMetricDTOList(List<Metric> metrics);

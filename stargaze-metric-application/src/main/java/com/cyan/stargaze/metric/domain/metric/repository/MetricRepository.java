@@ -17,7 +17,11 @@ public interface MetricRepository {
 
     Metric findByName(String workspaceId, String name);
 
+    Metric findByCode(String workspaceId, String code);
+
     List<Metric> listByWorkspace(String workspaceId, MetricStatus status);
+
+    List<Metric> listByWorkspace(String workspaceId, String keyword, MetricStatus status, String folder);
 
     Metric save(Metric metric);
 

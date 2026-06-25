@@ -29,6 +29,9 @@ public class MetricBindingDTO {
     /** 字段 ID */
     private String fieldId;
 
+    /** 是否主数据集 */
+    private Boolean primary;
+
     /** 该数据集下 DSL 覆盖 */
     private String dslOverride;
 }

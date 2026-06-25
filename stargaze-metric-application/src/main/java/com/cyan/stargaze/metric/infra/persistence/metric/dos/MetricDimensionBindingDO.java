@@ -12,25 +12,23 @@ import lombok.experimental.Accessors;
 
 import java.time.OffsetDateTime;
 
-/** 指标绑定表 DO(metric_binding)。 */
+/** 指标维度绑定表 DO(metric_dimension_binding)。 */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Accessors(chain = true)
-@TableName("metric_binding")
-public class MetricBindingDO {
+@TableName("metric_dimension_binding")
+public class MetricDimensionBindingDO {
     @TableId(value = "id", type = IdType.ASSIGN_ID)
     private Long id;
     @TableField("metric_id")
     private Long metricId;
+    @TableField("dimension_name")
+    private String dimensionName;
     @TableField("dataset_id")
     private Long datasetId;
     @TableField("field_id")
     private Long fieldId;
-    @TableField("is_primary")
-    private Boolean primary;
-    @TableField("dsl_override")
-    private String dslOverride;
     @TableField("created_at")
     private OffsetDateTime createdAt;
     @TableField("updated_at")

@@ -2,8 +2,11 @@ package com.cyan.stargaze.metric.application.metric;
 
 import com.cyan.stargaze.metric.application.metric.cmd.MetricBindingCmd;
 import com.cyan.stargaze.metric.application.metric.cmd.MetricCmd;
+import com.cyan.stargaze.metric.client.dto.CheckDimensionResultDTO;
+import com.cyan.stargaze.metric.client.dto.CheckNameResultDTO;
 import com.cyan.stargaze.metric.client.dto.MetricDTO;
 import com.cyan.stargaze.metric.client.dto.MetricResolveDTO;
+import com.cyan.stargaze.metric.client.dto.MetricSyncResultDTO;
 import com.cyan.stargaze.metric.client.dto.ValidationResultDTO;
 import com.cyan.stargaze.metric.domain.metric.MetricBinding;
 
@@ -25,12 +28,17 @@ public interface MetricService {
 
     List<MetricDTO> list(String workspaceId, boolean publishedOnly);
 
+    List<MetricDTO> list(String workspaceId, String keyword, String status, String folder);
+
     void delete(String id);
 
     /** 发布:draft → published,记版本 */
     MetricDTO publish(String id);
 
-    /** 废弃 */
+    /** 下线:published → offline */
+    MetricDTO offline(String id);
+
+    /** 废弃:published → deprecated */
     MetricDTO deprecate(String id);
 
     /** 指标绑定数据集字段 */
@@ -39,6 +47,26 @@ public interface MetricService {
     void removeBinding(String bindingId);
 
     List<MetricBinding> listBindings(String metricId);
+
+    /**
+     * 校验指标名称是否可用
+     */
+    CheckNameResultDTO checkName(String workspaceId, String name, String excludeId);
+
+    /**
+     * 校验指标标识是否可用
+     */
+    CheckNameResultDTO checkCode(String workspaceId, String code, String excludeId);
+
+    /**
+     * 跨数据集维度重复检测
+     */
+    CheckDimensionResultDTO checkDimensions(List<String> datasetIds);
+
+    /**
+     * 从数据集一键同步度量字段为指标
+     */
+    List<MetricSyncResultDTO> syncFromDatasets(String workspaceId, List<String> datasetIds, String createdBy);
 
     /**
      * 解析指标到指定数据集(纯函数,query 调用)
