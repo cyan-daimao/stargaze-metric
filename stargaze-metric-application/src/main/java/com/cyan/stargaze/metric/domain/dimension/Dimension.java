@@ -33,8 +33,14 @@ public class Dimension {
     /** 维度名(空间内唯一) */
     private String name;
 
+    /** 维度标识（字段名） */
+    private String code;
+
     /** 业务名 */
     private String businessName;
+
+    /** 所属目录 */
+    private String folder;
 
     /** 语义类型(geo/time/category) */
     private SemanticType semanticType;

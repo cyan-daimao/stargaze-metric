@@ -45,6 +45,10 @@ public class MetricDO {
     private MeasureKind measureKind;
     @TableField("expression")
     private String expression;
+    @TableField("filter_condition")
+    private String filterCondition;
+    @TableField("precision")
+    private Integer precision;
     @TableField("dsl")
     private String dsl;
     @TableField("caliber")

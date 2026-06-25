@@ -26,6 +26,8 @@ public interface MetricAdapterConvert {
 
     MetricAdapterConvert INSTANCE = Mappers.getMapper(MetricAdapterConvert.class);
 
+    @Mapping(target = "aggregation", source = "measureKind")
+    @Mapping(target = "dimensions", ignore = true)
     @Mapping(target = "dsl", ignore = true)
     @Mapping(target = "caliber", ignore = true)
     MetricDTO toMetricDTO(Metric metric);
@@ -36,6 +38,9 @@ public interface MetricAdapterConvert {
 
     List<MetricBindingDTO> toMetricBindingDTOList(List<MetricBinding> bindings);
 
+    @Mapping(target = "relatedMetrics", ignore = true)
+    @Mapping(target = "relatedMetricCount", ignore = true)
+    @Mapping(target = "relatedDatasets", ignore = true)
     DimensionDTO toDimensionDTO(Dimension dimension);
 
     List<DimensionDTO> toDimensionDTOList(List<Dimension> dimensions);

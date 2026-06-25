@@ -61,12 +61,14 @@ public abstract class MetricInfraConvert {
 
     @Mapping(target = "id", source = "id", qualifiedByName = "l2s")
     @Mapping(target = "metricId", source = "metricId", qualifiedByName = "l2s")
+    @Mapping(target = "dimensionId", source = "dimensionId", qualifiedByName = "l2s")
     @Mapping(target = "datasetId", source = "datasetId", qualifiedByName = "l2s")
     @Mapping(target = "fieldId", source = "fieldId", qualifiedByName = "l2s")
     public abstract MetricDimensionBinding toMetricDimensionBinding(MetricDimensionBindingDO doObj);
 
     @Mapping(target = "id", source = "id", qualifiedByName = "s2l")
     @Mapping(target = "metricId", source = "metricId", qualifiedByName = "s2l")
+    @Mapping(target = "dimensionId", source = "dimensionId", qualifiedByName = "s2l")
     @Mapping(target = "datasetId", source = "datasetId", qualifiedByName = "s2l")
     @Mapping(target = "fieldId", source = "fieldId", qualifiedByName = "s2l")
     public abstract MetricDimensionBindingDO toMetricDimensionBindingDO(MetricDimensionBinding binding);

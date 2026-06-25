@@ -1,6 +1,9 @@
 package com.cyan.stargaze.metric.application.metric.impl;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cyan.arch.common.api.Assert;
+import com.cyan.arch.common.api.Response;
 import com.cyan.arch.common.api.SilentException;
 import com.cyan.stargaze.dataset.client.DatasetClient;
 import com.cyan.stargaze.dataset.client.dto.DatasetFieldDTO;
@@ -12,13 +15,18 @@ import com.cyan.stargaze.metric.application.dimension.cmd.DimensionCmd;
 import com.cyan.stargaze.metric.application.metric.MetricService;
 import com.cyan.stargaze.metric.application.metric.cmd.MetricBindingCmd;
 import com.cyan.stargaze.metric.application.metric.cmd.MetricCmd;
+import com.cyan.stargaze.metric.client.dto.CheckDimensionRequestDTO;
 import com.cyan.stargaze.metric.client.dto.CheckDimensionResultDTO;
 import com.cyan.stargaze.metric.client.dto.CheckNameResultDTO;
+import com.cyan.stargaze.metric.client.dto.DatasetListItemDTO;
 import com.cyan.stargaze.metric.client.dto.DimensionDTO;
 import com.cyan.stargaze.metric.client.dto.FieldRefDTO;
 import com.cyan.stargaze.metric.client.dto.MetricDTO;
+import com.cyan.stargaze.metric.client.dto.MetricDimensionRefDTO;
 import com.cyan.stargaze.metric.client.dto.MetricResolveDTO;
+import com.cyan.stargaze.metric.client.dto.MetricSyncRequestDTO;
 import com.cyan.stargaze.metric.client.dto.MetricSyncResultDTO;
+import com.cyan.stargaze.metric.client.dto.PageDTO;
 import com.cyan.stargaze.metric.client.dto.ValidationResultDTO;
 import com.cyan.stargaze.metric.domain.dimension.Dimension;
 import com.cyan.stargaze.metric.domain.dimension.DimensionBinding;
@@ -38,6 +46,7 @@ import com.cyan.stargaze.metric.enums.MetricFormat;
 import com.cyan.stargaze.metric.enums.MetricStatus;
 import com.cyan.stargaze.metric.enums.MetricType;
 import com.cyan.stargaze.metric.enums.SemanticType;
+import com.cyan.stargaze.metric.infra.external.DatasetQueryClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -52,7 +61,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * 指标应用服务实现。
@@ -74,6 +82,7 @@ public class MetricServiceImpl implements MetricService {
     private final DimensionBindingRepository dimensionBindingRepository;
     private final MetricAppConvert convert;
     private final DatasetClient datasetClient;
+    private final DatasetQueryClient datasetQueryClient;
 
     @Override
     @Transactional
@@ -106,19 +115,25 @@ public class MetricServiceImpl implements MetricService {
     }
 
     @Override
-    public List<MetricDTO> list(String workspaceId, boolean publishedOnly) {
-        MetricStatus status = publishedOnly ? MetricStatus.PUBLISHED : null;
-        return metricRepository.listByWorkspace(workspaceId, status).stream()
-                .map(m -> enrichDTO(toDTO(m), m.getId())).toList();
+    public PageDTO<MetricDTO> list(String workspaceId, Integer page, Integer size, String keyword, String status, String folder) {
+        int p = page == null || page < 1 ? 1 : page;
+        int s = size == null || size < 1 ? 20 : size;
+        MetricStatus metricStatus = MetricStatus.fromCode(status);
+        IPage<Metric> result = metricRepository.pageByWorkspace(new Page<>(p, s), workspaceId, keyword, metricStatus, folder);
+        List<MetricDTO> records = result.getRecords().stream()
+                .map(m -> enrichDTO(toDTO(m), m.getId()))
+                .toList();
+        return new PageDTO<MetricDTO>()
+                .setData(records)
+                .setTotal(result.getTotal())
+                .setPage(result.getCurrent())
+                .setSize(result.getSize());
     }
 
     @Override
-    public List<MetricDTO> list(String workspaceId, String keyword, String status, String folder) {
-        MetricStatus metricStatus = null;
-        if (status != null && !status.isBlank()) {
-            metricStatus = MetricStatus.fromCode(status);
-        }
-        return metricRepository.listByWorkspace(workspaceId, keyword, metricStatus, folder).stream()
+    public List<MetricDTO> list(String workspaceId, boolean publishedOnly) {
+        MetricStatus status = publishedOnly ? MetricStatus.PUBLISHED : null;
+        return metricRepository.listByWorkspace(workspaceId, status).stream()
                 .map(m -> enrichDTO(toDTO(m), m.getId())).toList();
     }
 
@@ -136,7 +151,6 @@ public class MetricServiceImpl implements MetricService {
     public MetricDTO publish(String id) {
         Metric metric = loadMetric(id);
         metric = metric.publish(metricRepository);
-        // 记录版本快照
         MetricVersion version = new MetricVersion()
                 .setMetricId(metric.getId())
                 .setVersion(metric.getVersion())
@@ -170,7 +184,6 @@ public class MetricServiceImpl implements MetricService {
     public MetricBinding addBinding(MetricBindingCmd cmd) {
         MetricBinding binding = convert.toMetricBinding(cmd);
         binding.validate();
-        // 跨服务校验字段存在性与类型(dataset resolveField)
         Assert.notNull(datasetClient, new SilentException("数据集客户端未初始化"));
         var resp = datasetClient.resolveField(cmd.getDatasetId(), cmd.getFieldId());
         Assert.notNull(resp, new SilentException("字段校验失败:数据集服务无响应"));
@@ -219,20 +232,28 @@ public class MetricServiceImpl implements MetricService {
     }
 
     @Override
-    public CheckDimensionResultDTO checkDimensions(List<String> datasetIds) {
-        if (CollectionUtils.isEmpty(datasetIds)) {
-            return new CheckDimensionResultDTO().setHasDuplicate(false).setDuplicates(Collections.emptyList());
+    public CheckDimensionResultDTO checkDimensions(CheckDimensionRequestDTO request) {
+        List<String> datasetIds = new ArrayList<>();
+        if (request.getPrimaryDatasetId() != null) {
+            datasetIds.add(request.getPrimaryDatasetId());
         }
-        // 聚合各数据集维度字段（以 originName/alias 作为维度名）
+        if (!CollectionUtils.isEmpty(request.getSecondaryDatasetIds())) {
+            datasetIds.addAll(request.getSecondaryDatasetIds());
+        }
+        if (datasetIds.isEmpty()) {
+            return new CheckDimensionResultDTO().setDuplicates(Collections.emptyList());
+        }
+
         Map<String, Set<String>> nameToDatasets = new HashMap<>();
+        Map<String, String> datasetNameMap = new HashMap<>();
         for (String datasetId : datasetIds) {
             var resp = datasetClient.listFields(datasetId);
             if (resp == null || resp.getCode() != 200 || resp.getData() == null) {
-                log.warn("维度查重跳过不可用数据集 datasetId={}, code={}, message={}",
-                        datasetId, resp == null ? "null" : resp.getCode(),
-                        resp == null ? "null" : resp.getMessage());
+                log.warn("维度查重跳过不可用数据集 datasetId={}", datasetId);
                 continue;
             }
+            String datasetName = resp.getData().isEmpty() ? datasetId : datasetId;
+            datasetNameMap.put(datasetId, datasetName);
             for (DatasetFieldDTO field : resp.getData()) {
                 if (field.getFieldType() != FieldType.DIMENSION) {
                     continue;
@@ -245,145 +266,132 @@ public class MetricServiceImpl implements MetricService {
                 nameToDatasets.computeIfAbsent(dimName, k -> new HashSet<>()).add(datasetId);
             }
         }
-        List<CheckDimensionResultDTO.DuplicateDimensionDTO> duplicates = nameToDatasets.entrySet().stream()
-                .filter(e -> e.getValue().size() > 1)
-                .map(e -> new CheckDimensionResultDTO.DuplicateDimensionDTO()
-                        .setDimensionName(e.getKey())
-                        .setDatasetCount(e.getValue().size())
-                        .setDatasetIds(new ArrayList<>(e.getValue())))
+
+        List<CheckDimensionResultDTO.DuplicateDimensionDTO> duplicates = new ArrayList<>();
+        nameToDatasets.forEach((dimName, ids) -> {
+            if (ids.size() > 1) {
+                List<CheckDimensionResultDTO.DuplicateDimensionDTO.DatasetDTO> datasets = ids.stream()
+                        .map(id -> new CheckDimensionResultDTO.DuplicateDimensionDTO.DatasetDTO()
+                                .setId(id)
+                                .setName(datasetNameMap.getOrDefault(id, id)))
+                        .toList();
+                duplicates.add(new CheckDimensionResultDTO.DuplicateDimensionDTO()
+                        .setDimensionName(dimName)
+                        .setDatasets(datasets));
+            }
+        });
+        return new CheckDimensionResultDTO().setDuplicates(duplicates);
+    }
+
+    @Override
+    public PageDTO<DatasetListItemDTO> listSyncDatasets(String workspaceId, Integer page, Integer size, String keyword, String type, String datasource) {
+        int p = page == null || page < 1 ? 1 : page;
+        int s = size == null || size < 1 ? 20 : size;
+        Response<DatasetQueryClient.PageResult<DatasetQueryClient.DatasetItem>> resp = datasetQueryClient.list(
+                workspaceId, p, s, keyword, type, null);
+        Assert.notNull(resp, new SilentException("数据集服务无响应"));
+        Assert.isTrue(resp.getCode() == 200 && resp.getData() != null,
+                new SilentException("数据集服务返回错误:[" + resp.getCode() + "] " + resp.getMessage()));
+
+        List<DatasetListItemDTO> list = resp.getData().list().stream()
+                .map(item -> new DatasetListItemDTO()
+                        .setId(item.id())
+                        .setName(item.name())
+                        .setCode(item.name())
+                        .setType(item.sourceType())
+                        .setDatasource(item.datasourceName())
+                        .setSchema("")
+                        .setFields(item.fieldCount())
+                        .setRows("")
+                        .setStatus(item.status())
+                        .setMetricCount(item.measureCount())
+                        .setDimensionCount(item.dimensionCount())
+                        .setUpdateTime(item.updatedAt()))
                 .toList();
-        return new CheckDimensionResultDTO()
-                .setHasDuplicate(!duplicates.isEmpty())
-                .setDuplicates(duplicates);
+        return new PageDTO<DatasetListItemDTO>()
+                .setData(list)
+                .setTotal(resp.getData().total())
+                .setPage((long) resp.getData().page())
+                .setSize((long) resp.getData().size());
     }
 
     @Override
     @Transactional
-    public List<MetricSyncResultDTO> syncFromDatasets(String workspaceId, List<String> datasetIds, String createdBy) {
-        List<MetricSyncResultDTO> results = new ArrayList<>();
-        for (String datasetId : datasetIds) {
-            MetricSyncResultDTO result = new MetricSyncResultDTO()
-                    .setDatasetId(datasetId)
-                    .setCreated(new ArrayList<>())
-                    .setSkippedDuplicates(new ArrayList<>())
-                    .setErrors(new ArrayList<>())
-                    .setCreatedDimensions(new ArrayList<>())
-                    .setSkippedDimensionDuplicates(new ArrayList<>())
-                    .setDimensionErrors(new ArrayList<>());
-            var resp = datasetClient.listFields(datasetId);
-            if (resp == null) {
-                log.error("同步失败: 数据集服务无响应 datasetId={}", datasetId);
-                result.getErrors().add("数据集服务无响应(datasetClient.listFields 返回 null)");
-                results.add(result);
+    public MetricSyncResultDTO syncFromDataset(MetricSyncRequestDTO request, String createdBy) {
+        String datasetId = request.getDatasetId();
+        MetricSyncResultDTO result = new MetricSyncResultDTO()
+                .setDatasetId(datasetId)
+                .setCreated(0)
+                .setDuplicates(new ArrayList<>())
+                .setMetrics(new ArrayList<>());
+
+        var resp = datasetClient.listFields(datasetId);
+        Assert.notNull(resp, new SilentException("数据集服务无响应"));
+        Assert.isTrue(resp.getCode() == 200 && resp.getData() != null,
+                new SilentException("数据集服务返回错误:[" + resp.getCode() + "] " + resp.getMessage()));
+
+        List<String> targetNames = request.getMetricNames();
+        for (DatasetFieldDTO field : resp.getData()) {
+            if (field.getFieldType() != FieldType.MEASURE) {
                 continue;
             }
-            if (resp.getCode() != 200) {
-                log.error("同步失败: 数据集服务返回非成功码 datasetId={}, code={}, message={}",
-                        datasetId, resp.getCode(), resp.getMessage());
-                result.getErrors().add("数据集服务返回错误: [" + resp.getCode() + "] " + resp.getMessage());
-                results.add(result);
+            String metricName = field.getAlias() != null && !field.getAlias().isBlank()
+                    ? field.getAlias() : field.getOriginName();
+            if (!CollectionUtils.isEmpty(targetNames) && !targetNames.contains(metricName)) {
                 continue;
             }
-            if (resp.getData() == null) {
-                log.error("同步失败: 数据集服务返回 data 为空 datasetId={}", datasetId);
-                result.getErrors().add("数据集字段数据为空");
-                results.add(result);
+            String code = toCode(metricName);
+            String expression = "SUM([" + field.getOriginName() + "])";
+            Metric existingByName = metricRepository.findByName("", metricName);
+            Metric existingByCode = metricRepository.findByCode("", code);
+            if (existingByName != null) {
+                result.getDuplicates().add(new MetricSyncResultDTO.DuplicateMetricDTO()
+                        .setNewName(metricName)
+                        .setExistingName(existingByName.getName())
+                        .setExistingId(existingByName.getId()));
                 continue;
             }
-            List<DatasetFieldDTO> fields = resp.getData();
-            // 1. 同步度量字段为指标
-            for (DatasetFieldDTO field : fields) {
-                if (field.getFieldType() != FieldType.MEASURE) {
-                    continue;
-                }
-                String metricName = field.getAlias() != null && !field.getAlias().isBlank()
-                        ? field.getAlias() : field.getOriginName();
-                String code = toCode(metricName);
-                String expression = "SUM([" + field.getOriginName() + "])";
-                // 优先按数据集+字段+表达式判断是否已存在,避免同字段改名后重复创建
-                if (metricRepository.findByDatasetAndExpression(workspaceId, datasetId, expression) != null) {
-                    result.getSkippedDuplicates().add(metricName);
-                    continue;
-                }
-                if (metricRepository.findByName(workspaceId, metricName) != null
-                        || metricRepository.findByCode(workspaceId, code) != null) {
-                    result.getSkippedDuplicates().add(metricName);
-                    continue;
-                }
-                try {
-                    MetricCmd cmd = new MetricCmd()
-                            .setWorkspaceId(workspaceId)
-                            .setName(metricName)
-                            .setCode(code)
-                            .setBusinessName(metricName)
-                            .setDescription("从数据集 " + datasetId + " 一键同步生成")
-                            .setFolder("自动同步")
-                            .setFormat(MetricFormat.NUMBER)
-                            .setType(MetricType.ATOMIC)
-                            .setMeasureKind(MeasureKind.SUM)
-                            .setExpression(expression)
-                            .setPrimaryDatasetId(datasetId)
-                            .setPrimaryFieldId(field.getId())
-                            .setBoundDatasetIds(Collections.emptyList())
-                            .setCreatedBy(createdBy);
-                    MetricDTO dto = create(cmd);
-                    result.getCreated().add(dto);
-                } catch (Exception e) {
-                    log.warn("同步指标失败 datasetId={}, field={}", datasetId, field.getOriginName(), e);
-                    result.getErrors().add(metricName + ": " + e.getMessage());
-                }
+            if (existingByCode != null) {
+                result.getDuplicates().add(new MetricSyncResultDTO.DuplicateMetricDTO()
+                        .setNewName(metricName)
+                        .setExistingName(existingByCode.getName())
+                        .setExistingId(existingByCode.getId()));
+                continue;
             }
-            // 2. 同步维度字段为维度
-            for (DatasetFieldDTO field : fields) {
-                if (field.getFieldType() != FieldType.DIMENSION) {
-                    continue;
-                }
-                String dimensionName = field.getAlias() != null && !field.getAlias().isBlank()
-                        ? field.getAlias() : field.getOriginName();
-                if (dimensionRepository.findByName(workspaceId, dimensionName) != null) {
-                    result.getSkippedDimensionDuplicates().add(dimensionName);
-                    continue;
-                }
-                try {
-                    DimensionCmd dimCmd = new DimensionCmd()
-                            .setWorkspaceId(workspaceId)
-                            .setName(dimensionName)
-                            .setBusinessName(dimensionName)
-                            .setSemanticType(inferSemanticType(field.getOriginName()))
-                            .setFormat(field.getDataType() != null ? field.getDataType().name() : null)
-                            .setCreatedBy(createdBy);
-                    Dimension dimension = convert.toDimension(dimCmd);
-                    dimension = dimension.save(dimensionRepository);
-                    // 自动绑定数据集字段
-                    DimensionBindingCmd bindingCmd = new DimensionBindingCmd()
-                            .setDimensionId(dimension.getId())
-                            .setDatasetId(datasetId)
-                            .setFieldId(field.getId());
-                    DimensionBinding binding = convert.toDimensionBinding(bindingCmd);
-                    binding.validate();
-                    dimensionBindingRepository.save(binding);
-                    result.getCreatedDimensions().add(toDimensionDTO(dimension));
-                } catch (Exception e) {
-                    log.warn("同步维度失败 datasetId={}, field={}", datasetId, field.getOriginName(), e);
-                    result.getDimensionErrors().add(dimensionName + ": " + e.getMessage());
-                }
+            try {
+                MetricCmd cmd = new MetricCmd()
+                        .setWorkspaceId("")
+                        .setName(metricName)
+                        .setCode(code)
+                        .setBusinessName(metricName)
+                        .setDescription("从数据集 " + datasetId + " 一键同步生成")
+                        .setFolder("自动同步")
+                        .setFormat(MetricFormat.NUMBER)
+                        .setType(MetricType.ATOMIC)
+                        .setAggregation(MeasureKind.SUM)
+                        .setExpression(expression)
+                        .setPrimaryDatasetId(datasetId)
+                        .setPrimaryFieldId(field.getId())
+                        .setSecondaryDatasetIds(Collections.emptyList())
+                        .setCreatedBy(createdBy);
+                MetricDTO dto = create(cmd);
+                result.setCreated(result.getCreated() + 1);
+                result.getMetrics().add(dto);
+            } catch (Exception e) {
+                log.warn("同步指标失败 datasetId={}, field={}", datasetId, field.getOriginName(), e);
             }
-            results.add(result);
         }
-        return results;
+        return result;
     }
 
     @Override
     public MetricResolveDTO resolve(String metricId, String datasetId) {
         Metric metric = loadMetric(metricId);
-        // 消费红线:resolve 仅对已发布指标有效
         Assert.isTrue(metric.isPublished(), new SilentException("指标未发布,不可解析"));
         MetricBinding binding = metricBindingRepository.findByMetricAndDataset(metricId, datasetId);
         Assert.notNull(binding, new SilentException("指标未绑定该数据集"));
-        // DSL:binding 覆盖优先
         String dsl = (binding.getDslOverride() != null && !binding.getDslOverride().isBlank())
                 ? binding.getDslOverride() : metric.getExpression();
-        // 字段解析(跨服务)
         List<FieldRefDTO> fields = new ArrayList<>();
         var resp = datasetClient.resolveField(datasetId, binding.getFieldId());
         if (resp != null && resp.getData() != null) {
@@ -406,7 +414,6 @@ public class MetricServiceImpl implements MetricService {
         if (metricIds == null || dimensionIds == null || metricIds.isEmpty() || dimensionIds.isEmpty()) {
             return new ValidationResultDTO().setValid(true);
         }
-        // 校验每个指标×维度组合是否被允许(无记录默认允许)
         for (String metricId : metricIds) {
             for (String dimensionId : dimensionIds) {
                 if (!metricCompatRepository.isAllowed(metricId, dimensionId)) {
@@ -429,7 +436,6 @@ public class MetricServiceImpl implements MetricService {
         if (cmd.getPrimaryDatasetId() == null || cmd.getPrimaryDatasetId().isBlank()) {
             return;
         }
-        // 主数据集绑定
         MetricBinding primary = new MetricBinding()
                 .setMetricId(metricId)
                 .setDatasetId(cmd.getPrimaryDatasetId())
@@ -438,9 +444,8 @@ public class MetricServiceImpl implements MetricService {
                 .setCreatedAt(OffsetDateTime.now())
                 .setUpdatedAt(OffsetDateTime.now());
         metricBindingRepository.save(primary);
-        // 辅助数据集绑定：目前仅记录数据集关系（字段需后续通过 addBinding 补充）
-        if (!CollectionUtils.isEmpty(cmd.getBoundDatasetIds())) {
-            for (String datasetId : cmd.getBoundDatasetIds()) {
+        if (!CollectionUtils.isEmpty(cmd.getSecondaryDatasetIds())) {
+            for (String datasetId : cmd.getSecondaryDatasetIds()) {
                 if (datasetId.equals(cmd.getPrimaryDatasetId())) {
                     continue;
                 }
@@ -461,10 +466,11 @@ public class MetricServiceImpl implements MetricService {
             return;
         }
         List<MetricDimensionBinding> bindings = cmd.getDimensions().stream()
-                .distinct()
-                .map(name -> new MetricDimensionBinding()
+                .map(ref -> new MetricDimensionBinding()
                         .setMetricId(metricId)
-                        .setDimensionName(name))
+                        .setDimensionId(ref.getDimensionId())
+                        .setDimensionName(ref.getDimensionId())
+                        .setDatasetId(ref.getDatasetId()))
                 .toList();
         metricDimensionBindingRepository.saveBatch(metricId, bindings);
     }
@@ -474,15 +480,23 @@ public class MetricServiceImpl implements MetricService {
             return null;
         }
         List<MetricBinding> bindings = metricBindingRepository.listByMetric(metricId);
-        List<String> boundDatasetIds = bindings.stream()
+        List<String> secondaryDatasetIds = bindings.stream()
                 .filter(b -> !b.isPrimary())
                 .map(MetricBinding::getDatasetId)
                 .distinct()
                 .toList();
         List<MetricDimensionBinding> dimBindings = metricDimensionBindingRepository.listByMetric(metricId);
-        dto.setBoundDatasetIds(boundDatasetIds);
-        dto.setDimensions(dimBindings.stream().map(MetricDimensionBinding::getDimensionName).toList());
-        dto.setPrimaryDatasetId(dto.getPrimaryDatasetId());
+        List<MetricDimensionRefDTO> dimensionRefs = dimBindings.stream()
+                .map(b -> new MetricDimensionRefDTO()
+                        .setDimensionId(b.getDimensionName())
+                        .setDatasetId(b.getDatasetId()))
+                .toList();
+        dto.setSecondaryDatasetIds(secondaryDatasetIds);
+        dto.setSecondaryDatasetCount(secondaryDatasetIds.size());
+        dto.setDimensionCount(dimBindings.size());
+        dto.setDimensions(dimensionRefs);
+        dto.setAggregation(dto.getMeasureKind());
+        // 主数据集名称由调用方补充（避免循环依赖）
         return dto;
     }
 
@@ -498,7 +512,10 @@ public class MetricServiceImpl implements MetricService {
                 .setFormat(metric.getFormat())
                 .setType(metric.getType())
                 .setMeasureKind(metric.getMeasureKind())
+                .setAggregation(metric.getMeasureKind())
                 .setExpression(metric.getExpression())
+                .setFilterCondition(metric.getFilterCondition())
+                .setPrecision(metric.getPrecision())
                 .setDsl(metric.getDsl())
                 .setCaliber(metric.getCaliber())
                 .setPrimaryDatasetId(metric.getPrimaryDatasetId())

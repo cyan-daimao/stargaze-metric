@@ -25,6 +25,9 @@ public class MetricDimensionBinding {
     /** 指标 ID */
     private String metricId;
 
+    /** 维度 ID */
+    private String dimensionId;
+
     /** 维度字段名（跨数据集统一命名） */
     private String dimensionName;
 

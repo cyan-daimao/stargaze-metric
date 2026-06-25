@@ -19,10 +19,7 @@ import java.util.List;
 @Accessors(chain = true)
 public class CheckDimensionResultDTO {
 
-    /** 是否存在重复 */
-    private boolean hasDuplicate;
-
-    /** 重复维度信息 */
+    /** 重复维度列表 */
     private List<DuplicateDimensionDTO> duplicates;
 
     /**
@@ -35,9 +32,19 @@ public class CheckDimensionResultDTO {
     public static class DuplicateDimensionDTO {
         /** 维度名称 */
         private String dimensionName;
-        /** 涉及数据集数量 */
-        private int datasetCount;
-        /** 涉及数据集 ID 列表 */
-        private List<String> datasetIds;
+        /** 涉及数据集 */
+        private List<DatasetDTO> datasets;
+
+        /**
+         * 涉及数据集。
+         */
+        @Data
+        @NoArgsConstructor
+        @AllArgsConstructor
+        @Accessors(chain = true)
+        public static class DatasetDTO {
+            private String id;
+            private String name;
+        }
     }
 }

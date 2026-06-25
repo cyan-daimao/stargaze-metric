@@ -1,6 +1,8 @@
 package com.cyan.stargaze.metric.infra.persistence.metric.repository;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cyan.stargaze.metric.domain.metric.Metric;
 import com.cyan.stargaze.metric.domain.metric.repository.MetricRepository;
 import com.cyan.stargaze.metric.enums.MetricStatus;
@@ -46,16 +48,6 @@ public class MetricRepositoryImpl implements MetricRepository {
     }
 
     @Override
-    public Metric findByDatasetAndExpression(String workspaceId, String primaryDatasetId, String expression) {
-        MetricDO doObj = mapper.selectOne(new LambdaQueryWrapper<MetricDO>()
-                .eq(MetricDO::getWorkspaceId, IdUtil.toLong(workspaceId))
-                .eq(MetricDO::getPrimaryDatasetId, IdUtil.toLong(primaryDatasetId))
-                .eq(MetricDO::getExpression, expression)
-                .last("LIMIT 1"));
-        return doObj == null ? null : convert.toMetric(doObj);
-    }
-
-    @Override
     public List<Metric> listByWorkspace(String workspaceId, MetricStatus status) {
         LambdaQueryWrapper<MetricDO> wrapper = new LambdaQueryWrapper<MetricDO>()
                 .eq(MetricDO::getWorkspaceId, IdUtil.toLong(workspaceId))
@@ -65,16 +57,19 @@ public class MetricRepositoryImpl implements MetricRepository {
     }
 
     @Override
-    public List<Metric> listByWorkspace(String workspaceId, String keyword, MetricStatus status, String folder) {
+    public IPage<Metric> pageByWorkspace(IPage<Metric> page, String workspaceId, String keyword, MetricStatus status, String folder) {
         LambdaQueryWrapper<MetricDO> wrapper = new LambdaQueryWrapper<MetricDO>()
                 .eq(MetricDO::getWorkspaceId, IdUtil.toLong(workspaceId))
-                .like(keyword != null && !keyword.isBlank(), MetricDO::getName, keyword)
-                .or(keyword != null && !keyword.isBlank(),
-                        w -> w.like(MetricDO::getCode, keyword))
+                .and(keyword != null && !keyword.isBlank(), w -> w
+                        .like(MetricDO::getName, keyword)
+                        .or()
+                        .like(MetricDO::getCode, keyword))
                 .eq(status != null, MetricDO::getStatus, status)
                 .eq(folder != null && !folder.isBlank(), MetricDO::getFolder, folder)
                 .orderByDesc(MetricDO::getCreatedAt);
-        return mapper.selectList(wrapper).stream().map(convert::toMetric).toList();
+        Page<MetricDO> doPage = new Page<>(page.getCurrent(), page.getSize());
+        IPage<MetricDO> result = mapper.selectPage(doPage, wrapper);
+        return result.convert(convert::toMetric);
     }
 
     @Override

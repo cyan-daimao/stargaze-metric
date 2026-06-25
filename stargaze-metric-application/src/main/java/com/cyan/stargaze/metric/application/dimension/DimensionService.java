@@ -1,5 +1,6 @@
 package com.cyan.stargaze.metric.application.dimension;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cyan.stargaze.metric.application.dimension.cmd.DimensionBindingCmd;
 import com.cyan.stargaze.metric.application.dimension.cmd.DimensionCmd;
 import com.cyan.stargaze.metric.domain.dimension.Dimension;
@@ -22,6 +23,8 @@ public interface DimensionService {
     Dimension findById(String id);
 
     List<Dimension> list(String workspaceId, boolean publishedOnly);
+
+    IPage<Dimension> page(String workspaceId, Integer page, Integer size, String keyword, String folder, String status);
 
     void delete(String id);
 

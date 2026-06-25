@@ -23,6 +23,8 @@ public class MetricDimensionBindingDO {
     private Long id;
     @TableField("metric_id")
     private Long metricId;
+    @TableField("dimension_id")
+    private Long dimensionId;
     @TableField("dimension_name")
     private String dimensionName;
     @TableField("dataset_id")

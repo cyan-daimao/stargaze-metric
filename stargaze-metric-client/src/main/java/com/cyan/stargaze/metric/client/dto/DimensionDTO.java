@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 /**
  * 维度 DTO（对外契约）。
@@ -44,6 +45,21 @@ public class DimensionDTO {
 
     /** 状态 */
     private MetricStatus status;
+
+    /** 字段名 */
+    private String fieldName;
+
+    /** 所属目录 */
+    private String folder;
+
+    /** 关联指标 */
+    private List<String> relatedMetrics;
+
+    /** 关联指标数量 */
+    private Integer relatedMetricCount;
+
+    /** 关联数据集 */
+    private List<String> relatedDatasets;
 
     /** 创建人 */
     private String createdBy;

@@ -51,11 +51,20 @@ public class MetricDTO {
     /** 指标类型 */
     private MetricType type;
 
-    /** 聚合方式 */
+    /** 聚合方式（兼容旧字段 measureKind） */
+    private MeasureKind aggregation;
+
+    /** 聚合方式（原枚举） */
     private MeasureKind measureKind;
 
     /** 计算表达式（对应原 DSL） */
     private String expression;
+
+    /** 过滤条件 */
+    private String filterCondition;
+
+    /** 小数位 */
+    private Integer precision;
 
     /** 指标 DSL（兼容旧字段） */
     private String dsl;
@@ -66,11 +75,20 @@ public class MetricDTO {
     /** 主数据集 ID */
     private String primaryDatasetId;
 
-    /** 绑定的辅助数据集 ID 列表 */
-    private List<String> boundDatasetIds;
+    /** 主数据集名称 */
+    private String primaryDatasetName;
 
-    /** 绑定的维度标识列表 */
-    private List<String> dimensions;
+    /** 辅助数据集 ID 列表 */
+    private List<String> secondaryDatasetIds;
+
+    /** 辅助数据集数量 */
+    private Integer secondaryDatasetCount;
+
+    /** 维度数量 */
+    private Integer dimensionCount;
+
+    /** 绑定维度引用列表 */
+    private List<MetricDimensionRefDTO> dimensions;
 
     /** 状态 */
     private MetricStatus status;

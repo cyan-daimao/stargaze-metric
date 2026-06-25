@@ -20,4 +20,7 @@ public interface MetricDimensionBindingRepository {
 
     /** 删除指标全部维度绑定 */
     void deleteByMetric(String metricId);
+
+    /** 查询维度被哪些指标绑定 */
+    List<MetricDimensionBinding> listByDimensionId(String dimensionId);
 }

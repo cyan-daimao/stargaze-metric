@@ -1,5 +1,7 @@
 package com.cyan.stargaze.metric.application.dimension.impl;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cyan.arch.common.api.Assert;
 import com.cyan.arch.common.api.SilentException;
 import com.cyan.stargaze.dataset.client.DatasetClient;
@@ -62,6 +64,14 @@ public class DimensionServiceImpl implements DimensionService {
     public List<Dimension> list(String workspaceId, boolean publishedOnly) {
         MetricStatus status = publishedOnly ? MetricStatus.PUBLISHED : null;
         return dimensionRepository.listByWorkspace(workspaceId, status);
+    }
+
+    @Override
+    public IPage<Dimension> page(String workspaceId, Integer page, Integer size, String keyword, String folder, String status) {
+        int p = page == null || page < 1 ? 1 : page;
+        int s = size == null || size < 1 ? 20 : size;
+        MetricStatus metricStatus = MetricStatus.fromCode(status);
+        return dimensionRepository.pageByWorkspace(new Page<>(p, s), workspaceId, keyword, metricStatus, folder);
     }
 
     @Override

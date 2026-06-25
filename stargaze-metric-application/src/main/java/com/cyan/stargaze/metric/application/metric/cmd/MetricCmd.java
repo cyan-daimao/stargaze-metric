@@ -1,5 +1,6 @@
 package com.cyan.stargaze.metric.application.metric.cmd;
 
+import com.cyan.stargaze.metric.client.dto.MetricDimensionRefDTO;
 import com.cyan.stargaze.metric.enums.MeasureKind;
 import com.cyan.stargaze.metric.enums.MetricFormat;
 import com.cyan.stargaze.metric.enums.MetricType;
@@ -57,11 +58,17 @@ public class MetricCmd {
 
     /** 聚合方式 */
     @NotNull(message = "聚合方式不能为空")
-    private MeasureKind measureKind;
+    private MeasureKind aggregation;
 
     /** 计算表达式（对应原 DSL） */
     @NotBlank(message = "计算表达式不能为空")
     private String expression;
+
+    /** 过滤条件 */
+    private String filterCondition;
+
+    /** 小数位 */
+    private Integer precision;
 
     /** 口径说明（兼容旧字段） */
     private String caliber;
@@ -75,10 +82,10 @@ public class MetricCmd {
     private String primaryFieldId;
 
     /** 辅助数据集 ID 列表 */
-    private List<String> boundDatasetIds;
+    private List<String> secondaryDatasetIds;
 
-    /** 绑定的维度字段名列表 */
-    private List<String> dimensions;
+    /** 绑定维度引用列表 */
+    private List<MetricDimensionRefDTO> dimensions;
 
     /** 负责人 ID */
     private String ownerId;

@@ -63,6 +63,12 @@ public class Metric {
     /** 计算表达式（对应原 DSL） */
     private String expression;
 
+    /** 过滤条件 */
+    private String filterCondition;
+
+    /** 小数位 */
+    private Integer precision;
+
     /** 指标 DSL(兼容旧字段) */
     private String dsl;
 

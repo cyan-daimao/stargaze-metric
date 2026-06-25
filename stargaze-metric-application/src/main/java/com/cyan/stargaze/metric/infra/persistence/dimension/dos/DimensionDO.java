@@ -27,8 +27,12 @@ public class DimensionDO {
     private Long workspaceId;
     @TableField("name")
     private String name;
+    @TableField("code")
+    private String code;
     @TableField("business_name")
     private String businessName;
+    @TableField("folder")
+    private String folder;
     @TableField("semantic_type")
     private SemanticType semanticType;
     @TableField("dictionary_id")

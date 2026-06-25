@@ -22,21 +22,28 @@ public class MetricSyncResultDTO {
     /** 同步的数据集 ID */
     private String datasetId;
 
-    /** 成功创建的指标列表 */
-    private List<MetricDTO> created;
+    /** 成功创建的指标数量 */
+    private Integer created;
 
-    /** 因名称重复跳过的字段 */
-    private List<String> skippedDuplicates;
+    /** 重复跳过的指标 */
+    private List<DuplicateMetricDTO> duplicates;
 
-    /** 失败原因 */
-    private List<String> errors;
+    /** 创建的指标列表 */
+    private List<MetricDTO> metrics;
 
-    /** 成功创建的维度列表 */
-    private List<DimensionDTO> createdDimensions;
-
-    /** 因名称重复跳过的维度 */
-    private List<String> skippedDimensionDuplicates;
-
-    /** 维度同步失败原因 */
-    private List<String> dimensionErrors;
+    /**
+     * 重复指标项。
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Accessors(chain = true)
+    public static class DuplicateMetricDTO {
+        /** 新指标名 */
+        private String newName;
+        /** 已存在指标名 */
+        private String existingName;
+        /** 已存在指标 ID */
+        private String existingId;
+    }
 }

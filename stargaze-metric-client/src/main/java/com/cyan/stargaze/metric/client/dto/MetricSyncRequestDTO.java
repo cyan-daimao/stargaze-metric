@@ -1,4 +1,4 @@
-package com.cyan.stargaze.metric.adapter.metric.http.dto;
+package com.cyan.stargaze.metric.client.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;

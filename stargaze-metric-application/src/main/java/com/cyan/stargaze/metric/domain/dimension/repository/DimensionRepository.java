@@ -1,5 +1,6 @@
 package com.cyan.stargaze.metric.domain.dimension.repository;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cyan.stargaze.metric.domain.dimension.Dimension;
 import com.cyan.stargaze.metric.enums.MetricStatus;
 
@@ -18,6 +19,8 @@ public interface DimensionRepository {
     Dimension findByName(String workspaceId, String name);
 
     List<Dimension> listByWorkspace(String workspaceId, MetricStatus status);
+
+    IPage<Dimension> pageByWorkspace(IPage<Dimension> page, String workspaceId, String keyword, MetricStatus status, String folder);
 
     Dimension save(Dimension dimension);
 

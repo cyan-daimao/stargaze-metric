@@ -57,4 +57,11 @@ public class MetricDimensionBindingRepositoryImpl implements MetricDimensionBind
         mapper.delete(new LambdaQueryWrapper<MetricDimensionBindingDO>()
                 .eq(MetricDimensionBindingDO::getMetricId, IdUtil.toLong(metricId)));
     }
+
+    @Override
+    public List<MetricDimensionBinding> listByDimensionId(String dimensionId) {
+        return mapper.selectList(new LambdaQueryWrapper<MetricDimensionBindingDO>()
+                        .eq(MetricDimensionBindingDO::getDimensionId, IdUtil.toLong(dimensionId)))
+                .stream().map(convert::toMetricDimensionBinding).toList();
+    }
 }

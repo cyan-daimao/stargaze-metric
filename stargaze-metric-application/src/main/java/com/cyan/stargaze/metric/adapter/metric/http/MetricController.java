@@ -9,10 +9,14 @@ import com.cyan.stargaze.metric.adapter.metric.http.dto.MetricSyncRequestDTO;
 import com.cyan.stargaze.metric.application.metric.MetricService;
 import com.cyan.stargaze.metric.application.metric.cmd.MetricBindingCmd;
 import com.cyan.stargaze.metric.application.metric.cmd.MetricCmd;
+import com.cyan.stargaze.metric.client.dto.CheckDimensionRequestDTO;
 import com.cyan.stargaze.metric.client.dto.CheckDimensionResultDTO;
 import com.cyan.stargaze.metric.client.dto.CheckNameResultDTO;
+import com.cyan.stargaze.metric.client.dto.DatasetListItemDTO;
 import com.cyan.stargaze.metric.client.dto.MetricDTO;
+import com.cyan.stargaze.metric.client.dto.MetricDimensionRefDTO;
 import com.cyan.stargaze.metric.client.dto.MetricSyncResultDTO;
+import com.cyan.stargaze.metric.client.dto.PageDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -28,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 指标控制器(/api/metrics)。
+ * 指标控制器(/api/v1/metrics)。
  *
  * @author cy.Y
  * @since 1.0.0
@@ -59,16 +63,22 @@ public class MetricController {
     }
 
     @GetMapping
-    public Response<List<MetricDTO>> list(
+    public Response<PageDTO<MetricDTO>> list(
             @RequestParam("workspaceId") String workspaceId,
-            @RequestParam(value = "publishedOnly", defaultValue = "false") boolean publishedOnly,
+            @RequestParam(value = "page", defaultValue = "1") Integer page,
+            @RequestParam(value = "size", defaultValue = "20") Integer size,
             @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(value = "status", required = false) String status,
-            @RequestParam(value = "folder", required = false) String folder) {
-        if (keyword != null || status != null || folder != null) {
-            return Response.success(metricService.list(workspaceId, keyword, status, folder));
+            @RequestParam(value = "folder", required = false) String folder,
+            @RequestParam(value = "publishedOnly", defaultValue = "false") boolean publishedOnly) {
+        if (publishedOnly) {
+            return Response.success(new PageDTO<MetricDTO>()
+                    .setData(metricService.list(workspaceId, true))
+                    .setTotal(0)
+                    .setPage(1L)
+                    .setSize(20L));
         }
-        return Response.success(metricService.list(workspaceId, publishedOnly));
+        return Response.success(metricService.list(workspaceId, page, size, keyword, status, folder));
     }
 
     @DeleteMapping("/{id}")
@@ -110,22 +120,37 @@ public class MetricController {
     }
 
     @PostMapping("/check-dimensions")
-    public Response<CheckDimensionResultDTO> checkDimensions(@RequestBody List<String> datasetIds) {
-        return Response.success(metricService.checkDimensions(datasetIds));
+    public Response<CheckDimensionResultDTO> checkDimensions(@RequestBody @Valid CheckDimensionRequestDTO request) {
+        return Response.success(metricService.checkDimensions(request));
     }
 
     // ---- 一键同步 ----
+    @GetMapping("/sync-datasets")
+    public Response<PageDTO<DatasetListItemDTO>> listSyncDatasets(
+            @RequestParam("workspaceId") String workspaceId,
+            @RequestParam(value = "page", defaultValue = "1") Integer page,
+            @RequestParam(value = "size", defaultValue = "5") Integer size,
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "type", required = false) String type,
+            @RequestParam(value = "datasource", required = false) String datasource) {
+        return Response.success(metricService.listSyncDatasets(workspaceId, page, size, keyword, type, datasource));
+    }
+
     @PostMapping("/sync")
-    public Response<List<MetricSyncResultDTO>> sync(@RequestBody @Valid MetricSyncRequestDTO request) {
+    public Response<MetricSyncResultDTO> sync(@RequestBody @Valid MetricSyncRequestDTO request) {
         String createdBy = getCurrentUserId();
-        return Response.success(metricService.syncFromDatasets(request.getWorkspaceId(), request.getDatasetIds(), createdBy));
+        com.cyan.stargaze.metric.client.dto.MetricSyncRequestDTO clientReq =
+                new com.cyan.stargaze.metric.client.dto.MetricSyncRequestDTO()
+                        .setDatasetId(request.getDatasetId())
+                        .setMetricNames(request.getMetricNames());
+        return Response.success(metricService.syncFromDataset(clientReq, createdBy));
     }
 
     // ---- 维度绑定 ----
     @GetMapping("/{id}/dimensions")
     public Response<List<String>> listDimensions(@PathVariable("id") String metricId) {
         MetricDTO dto = metricService.findById(metricId);
-        return Response.success(dto.getDimensions());
+        return Response.success(dto.getDimensions().stream().map(MetricDimensionRefDTO::getDimensionId).toList());
     }
 
     // ---- 数据集绑定 ----

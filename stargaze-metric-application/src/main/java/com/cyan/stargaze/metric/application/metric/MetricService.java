@@ -1,12 +1,17 @@
 package com.cyan.stargaze.metric.application.metric;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cyan.stargaze.metric.application.metric.cmd.MetricBindingCmd;
 import com.cyan.stargaze.metric.application.metric.cmd.MetricCmd;
+import com.cyan.stargaze.metric.client.dto.CheckDimensionRequestDTO;
 import com.cyan.stargaze.metric.client.dto.CheckDimensionResultDTO;
 import com.cyan.stargaze.metric.client.dto.CheckNameResultDTO;
+import com.cyan.stargaze.metric.client.dto.DatasetListItemDTO;
 import com.cyan.stargaze.metric.client.dto.MetricDTO;
 import com.cyan.stargaze.metric.client.dto.MetricResolveDTO;
+import com.cyan.stargaze.metric.client.dto.MetricSyncRequestDTO;
 import com.cyan.stargaze.metric.client.dto.MetricSyncResultDTO;
+import com.cyan.stargaze.metric.client.dto.PageDTO;
 import com.cyan.stargaze.metric.client.dto.ValidationResultDTO;
 import com.cyan.stargaze.metric.domain.metric.MetricBinding;
 
@@ -26,9 +31,9 @@ public interface MetricService {
 
     MetricDTO findById(String id);
 
-    List<MetricDTO> list(String workspaceId, boolean publishedOnly);
+    PageDTO<MetricDTO> list(String workspaceId, Integer page, Integer size, String keyword, String status, String folder);
 
-    List<MetricDTO> list(String workspaceId, String keyword, String status, String folder);
+    List<MetricDTO> list(String workspaceId, boolean publishedOnly);
 
     void delete(String id);
 
@@ -61,12 +66,17 @@ public interface MetricService {
     /**
      * 跨数据集维度重复检测
      */
-    CheckDimensionResultDTO checkDimensions(List<String> datasetIds);
+    CheckDimensionResultDTO checkDimensions(CheckDimensionRequestDTO request);
+
+    /**
+     * 获取可同步的数据集列表
+     */
+    PageDTO<DatasetListItemDTO> listSyncDatasets(String workspaceId, Integer page, Integer size, String keyword, String type, String datasource);
 
     /**
      * 从数据集一键同步度量字段为指标
      */
-    List<MetricSyncResultDTO> syncFromDatasets(String workspaceId, List<String> datasetIds, String createdBy);
+    MetricSyncResultDTO syncFromDataset(MetricSyncRequestDTO request, String createdBy);
 
     /**
      * 解析指标到指定数据集(纯函数,query 调用)
