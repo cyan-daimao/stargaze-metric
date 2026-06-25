@@ -8,6 +8,7 @@ import com.cyan.stargaze.metric.client.dto.MetricDTO;
 import com.cyan.stargaze.metric.client.dto.MetricResolveDTO;
 import com.cyan.stargaze.metric.client.dto.ValidationResultDTO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -21,6 +22,7 @@ import java.util.List;
  * @since 1.0.0
  */
 @RestController
+@RequestMapping("/rpc/metric")
 @RequiredArgsConstructor
 public class MetricRpcController implements MetricClient {
 
