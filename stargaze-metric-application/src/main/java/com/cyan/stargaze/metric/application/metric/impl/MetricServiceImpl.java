@@ -165,7 +165,7 @@ public class MetricServiceImpl implements MetricService {
         var resp = datasetClient.resolveField(cmd.getDatasetId(), cmd.getFieldId());
         Assert.notNull(resp, new SilentException("字段校验失败:数据集服务无响应"));
         Assert.isTrue(resp.getCode() == 200 && resp.getData() != null,
-                new SilentException("字段校验失败:" + resp.getMessage()));
+                new SilentException("字段校验失败:[" + resp.getCode() + "] " + resp.getMessage()));
         return metricBindingRepository.save(binding);
     }
 
@@ -218,6 +218,9 @@ public class MetricServiceImpl implements MetricService {
         for (String datasetId : datasetIds) {
             var resp = datasetClient.listFields(datasetId);
             if (resp == null || resp.getCode() != 200 || resp.getData() == null) {
+                log.warn("维度查重跳过不可用数据集 datasetId={}, code={}, message={}",
+                        datasetId, resp == null ? "null" : resp.getCode(),
+                        resp == null ? "null" : resp.getMessage());
                 continue;
             }
             for (DatasetFieldDTO field : resp.getData()) {
@@ -255,8 +258,22 @@ public class MetricServiceImpl implements MetricService {
                     .setSkippedDuplicates(new ArrayList<>())
                     .setErrors(new ArrayList<>());
             var resp = datasetClient.listFields(datasetId);
-            if (resp == null || resp.getCode() != 200 || resp.getData() == null) {
-                result.getErrors().add("数据集不可用或服务无响应");
+            if (resp == null) {
+                log.error("同步指标失败: 数据集服务无响应 datasetId={}", datasetId);
+                result.getErrors().add("数据集服务无响应(datasetClient.listFields 返回 null)");
+                results.add(result);
+                continue;
+            }
+            if (resp.getCode() != 200) {
+                log.error("同步指标失败: 数据集服务返回非成功码 datasetId={}, code={}, message={}",
+                        datasetId, resp.getCode(), resp.getMessage());
+                result.getErrors().add("数据集服务返回错误: [" + resp.getCode() + "] " + resp.getMessage());
+                results.add(result);
+                continue;
+            }
+            if (resp.getData() == null) {
+                log.error("同步指标失败: 数据集服务返回 data 为空 datasetId={}", datasetId);
+                result.getErrors().add("数据集字段数据为空");
                 results.add(result);
                 continue;
             }
