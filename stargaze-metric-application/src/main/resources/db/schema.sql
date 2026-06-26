@@ -42,13 +42,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS uk_metric_workspace_code ON metric(workspace_i
 CREATE INDEX IF NOT EXISTS idx_metric_workspace_status ON metric(workspace_id, status) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_metric_folder ON metric(folder) WHERE deleted_at IS NULL;
 
--- 历史表结构兼容：已有部署通过 ALTER TABLE 补齐新增字段
-ALTER TABLE metric ADD COLUMN IF NOT EXISTS filter_condition TEXT;
-ALTER TABLE metric ADD COLUMN IF NOT EXISTS precision INT;
-ALTER TABLE dimension ADD COLUMN IF NOT EXISTS code VARCHAR(256);
-ALTER TABLE dimension ADD COLUMN IF NOT EXISTS folder VARCHAR(128);
-ALTER TABLE metric_dimension_binding ADD COLUMN IF NOT EXISTS dimension_id BIGINT;
-
 -- 指标版本快照表
 CREATE TABLE IF NOT EXISTS metric_version (
     id              BIGSERIAL PRIMARY KEY,
