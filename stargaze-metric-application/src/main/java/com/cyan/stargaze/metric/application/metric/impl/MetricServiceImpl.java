@@ -285,7 +285,7 @@ public class MetricServiceImpl implements MetricService {
     public PageDTO<DatasetListItemDTO> listSyncDatasets(String workspaceId, Integer page, Integer size, String keyword, String type, String datasource) {
         int p = page == null || page < 1 ? 1 : page;
         int s = size == null || size < 1 ? 20 : size;
-        Response<com.cyan.stargaze.dataset.client.dto.PageDTO<com.cyan.stargaze.dataset.client.dto.DatasetListItemDTO>> resp =
+        Response<com.cyan.arch.common.api.Page<com.cyan.stargaze.dataset.client.dto.DatasetListItemDTO>> resp =
                 datasetClient.page(workspaceId, p, s, keyword, type, null);
         Assert.notNull(resp, new SilentException("数据集服务无响应"));
         Assert.isTrue(resp.getCode() == 200 && resp.getData() != null,
@@ -310,7 +310,7 @@ public class MetricServiceImpl implements MetricService {
         return new PageDTO<DatasetListItemDTO>()
                 .setData(list)
                 .setTotal(resp.getData().getTotal())
-                .setPage(resp.getData().getPage())
+                .setPage(resp.getData().getCurrent())
                 .setSize(resp.getData().getSize());
     }
 
