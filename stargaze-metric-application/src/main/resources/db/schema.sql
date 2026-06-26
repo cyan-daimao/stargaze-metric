@@ -1,160 +1,200 @@
--- 指标平台完整数据库 schema（PostgreSQL）
--- 默认 schema: stargaze_metric
--- 警告：以下 DROP 语句会清空数据，仅用于开发/测试环境重建表结构
+-- ============================================================================
+-- stargaze-metric 元数据库 Schema (PostgreSQL 15+)
+-- ----------------------------------------------------------------------------
+-- 服务: stargaze-metric
+-- 说明:
+--   1. 对应 DO: MetricDO / MetricBindingDO / MetricDimensionBindingDO
+--      / MetricDimensionCompatDO / MetricVersionDO / DimensionDO / DimensionBindingDO。
+--   2. 主键 id 为 BIGINT,由应用层 MyBatis-Plus IdType.ASSIGN_ID(雪花)赋值,数据库不自增。
+--   3. 时间列使用 TIMESTAMPTZ 对齐 OffsetDateTime。
+--   4. JSON/DSL 字段在 DO 中均为 String 序列化,故使用 TEXT 类型。
+--   5. 逻辑删除: deleted_at 为 NULL 表示存活,@TableLogic(value="null", delval="now()")。
+--   6. 已移除 workspace / workspace_id 等多租户字段。
+-- ============================================================================
 
-DROP TABLE IF EXISTS metric_dimension_compat CASCADE;
+CREATE SCHEMA IF NOT EXISTS stargaze_metric;
+SET search_path TO stargaze_metric;
+
+-- 清理旧表(子表先删)
+DROP TABLE IF EXISTS metric_dimension_compat  CASCADE;
 DROP TABLE IF EXISTS metric_dimension_binding CASCADE;
-DROP TABLE IF EXISTS metric_binding CASCADE;
-DROP TABLE IF EXISTS metric_version CASCADE;
-DROP TABLE IF EXISTS dimension_binding CASCADE;
-DROP TABLE IF EXISTS dimension CASCADE;
-DROP TABLE IF EXISTS metric CASCADE;
+DROP TABLE IF EXISTS metric_binding           CASCADE;
+DROP TABLE IF EXISTS metric_version           CASCADE;
+DROP TABLE IF EXISTS dimension_binding        CASCADE;
+DROP TABLE IF EXISTS dimension                CASCADE;
+DROP TABLE IF EXISTS metric                   CASCADE;
 
--- 指标主表
-CREATE TABLE IF NOT EXISTS metric (
-    id              BIGSERIAL PRIMARY KEY,
-    name            VARCHAR(256) NOT NULL,
-    code            VARCHAR(128),
-    business_name   VARCHAR(256),
-    description     TEXT,
-    folder          VARCHAR(128),
-    format          VARCHAR(32),
-    type            VARCHAR(32) NOT NULL,
-    measure_kind    VARCHAR(32) NOT NULL,
-    expression      TEXT,
-    filter_condition TEXT,
-    precision       INT,
-    dsl             TEXT,
-    caliber         TEXT,
-    primary_dataset_id BIGINT,
-    owner_id        BIGINT,
-    status          VARCHAR(32) NOT NULL DEFAULT 'draft',
-    version         INTEGER NOT NULL DEFAULT 1,
+-- ============================================================================
+-- 业务指标
+-- ============================================================================
+CREATE TABLE metric (
+    id              BIGINT       PRIMARY KEY,
+    name            VARCHAR(128) NOT NULL,              -- 指标名称,全局唯一
+    code            VARCHAR(128),                       -- 指标标识(英文代码)
+    business_name   VARCHAR(128),                       -- 业务名称
+    description     TEXT,                               -- 描述
+    folder          VARCHAR(128),                       -- 所属文件夹
+    format          VARCHAR(32),                        -- 格式
+    type            VARCHAR(16)  NOT NULL,              -- 类型:atomic/derived/window
+    measure_kind    VARCHAR(16)  NOT NULL,              -- 度量方式:sum/avg/count/distinct_count/max/min/expr
+    expression      TEXT,                               -- 计算表达式
+    filter_condition TEXT,                              -- 过滤条件
+    precision       INT,                                -- 精度
+    dsl             TEXT,                               -- 指标 DSL
+    caliber         TEXT,                               -- 口径说明
+    primary_dataset_id BIGINT,                         -- 主数据集 ID
+    owner_id        BIGINT,                             -- 负责人 ID
+    status          VARCHAR(16)  NOT NULL DEFAULT 'draft',
+    version         INT          NOT NULL DEFAULT 1,
     created_by      BIGINT,
     updated_by      BIGINT,
-    created_at      TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    deleted_at      TIMESTAMP WITH TIME ZONE
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    deleted_at      TIMESTAMPTZ
 );
-
-COMMENT ON TABLE metric IS '业务指标主表';
-COMMENT ON COLUMN metric.code IS '指标标识（英文代码）';
-COMMENT ON COLUMN metric.expression IS '计算表达式（对应原 DSL）';
-COMMENT ON COLUMN metric.dsl IS '兼容旧字段的指标 DSL';
-COMMENT ON COLUMN metric.caliber IS '兼容旧字段的口径说明';
+COMMENT ON TABLE metric IS '业务指标(口径统一,可绑定多数据集)';
+COMMENT ON COLUMN metric.name IS '指标名称,全局唯一';
+COMMENT ON COLUMN metric.code IS '指标标识(英文代码)';
+COMMENT ON COLUMN metric.type IS '类型:atomic/derived/window';
+COMMENT ON COLUMN metric.measure_kind IS '度量方式:sum/avg/count/distinct_count/max/min/expr';
+COMMENT ON COLUMN metric.expression IS '计算表达式';
+COMMENT ON COLUMN metric.dsl IS '指标 DSL';
+COMMENT ON COLUMN metric.caliber IS '口径说明';
 COMMENT ON COLUMN metric.primary_dataset_id IS '主数据集 ID';
-COMMENT ON COLUMN metric.status IS '状态: draft/published/offline/deprecated';
+COMMENT ON COLUMN metric.status IS '状态:draft/published/offline/deprecated';
 
-CREATE UNIQUE INDEX IF NOT EXISTS uk_metric_name ON metric(name) WHERE deleted_at IS NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS uk_metric_code ON metric(code) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_metric_folder ON metric(folder) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX uk_metric_name ON metric (name) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX uk_metric_code ON metric (code) WHERE deleted_at IS NULL AND code IS NOT NULL;
+CREATE INDEX idx_metric_status ON metric (status) WHERE deleted_at IS NULL;
+CREATE INDEX idx_metric_folder ON metric (folder) WHERE deleted_at IS NULL;
+CREATE INDEX idx_metric_owner ON metric (owner_id) WHERE deleted_at IS NULL;
 
--- 指标版本快照表
-CREATE TABLE IF NOT EXISTS metric_version (
-    id              BIGSERIAL PRIMARY KEY,
-    metric_id       BIGINT NOT NULL,
-    version         INTEGER NOT NULL,
-    dsl             TEXT,
-    caliber         TEXT,
-    change_log      VARCHAR(512),
-    created_by      BIGINT,
-    created_at      TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    deleted_at      TIMESTAMP WITH TIME ZONE
+-- ============================================================================
+-- 指标版本(口径变更审计)
+-- ============================================================================
+CREATE TABLE metric_version (
+    id         BIGINT       PRIMARY KEY,
+    metric_id  BIGINT       NOT NULL,
+    version    INT          NOT NULL,
+    dsl        TEXT,
+    caliber    TEXT,
+    change_log TEXT,
+    created_by BIGINT,
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    deleted_at TIMESTAMPTZ
 );
+COMMENT ON TABLE metric_version IS '指标版本(口径变更审计)';
+COMMENT ON COLUMN metric_version.version IS '版本号';
+COMMENT ON COLUMN metric_version.change_log IS '变更说明';
 
-COMMENT ON TABLE metric_version IS '指标版本快照';
+CREATE UNIQUE INDEX uk_metric_version_metric_version ON metric_version (metric_id, version) WHERE deleted_at IS NULL;
+CREATE INDEX idx_metric_version_metric ON metric_version (metric_id) WHERE deleted_at IS NULL;
 
-CREATE INDEX IF NOT EXISTS idx_metric_version_metric ON metric_version(metric_id);
-
--- 指标-数据集字段绑定表
-CREATE TABLE IF NOT EXISTS metric_binding (
-    id              BIGSERIAL PRIMARY KEY,
-    metric_id       BIGINT NOT NULL,
-    dataset_id      BIGINT NOT NULL,
-    field_id        BIGINT,
-    is_primary      BOOLEAN DEFAULT FALSE,
-    dsl_override    TEXT,
-    created_at      TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    deleted_at      TIMESTAMP WITH TIME ZONE
+-- ============================================================================
+-- 指标-数据集字段绑定
+-- ============================================================================
+CREATE TABLE metric_binding (
+    id           BIGINT   PRIMARY KEY,
+    metric_id    BIGINT   NOT NULL,
+    dataset_id   BIGINT   NOT NULL,
+    field_id     BIGINT,
+    is_primary   BOOLEAN  NOT NULL DEFAULT FALSE,       -- 是否主数据集
+    dsl_override TEXT,                                  -- 该数据集下 DSL 覆盖
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at   TIMESTAMPTZ
 );
-
-COMMENT ON TABLE metric_binding IS '指标与数据集字段绑定关系';
+COMMENT ON TABLE metric_binding IS '指标-数据集字段绑定(同一指标可绑定多个数据集)';
 COMMENT ON COLUMN metric_binding.is_primary IS '是否主数据集';
-COMMENT ON COLUMN metric_binding.dsl_override IS '当前数据集下的 DSL 覆盖';
+COMMENT ON COLUMN metric_binding.dsl_override IS '该数据集下 DSL 覆盖';
 
-CREATE INDEX IF NOT EXISTS idx_metric_binding_metric ON metric_binding(metric_id);
-CREATE INDEX IF NOT EXISTS idx_metric_binding_dataset ON metric_binding(dataset_id);
-CREATE UNIQUE INDEX IF NOT EXISTS uk_metric_binding_metric_dataset ON metric_binding(metric_id, dataset_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_metric_binding_metric ON metric_binding (metric_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_metric_binding_dataset ON metric_binding (dataset_id) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX uk_metric_binding_metric_dataset ON metric_binding (metric_id, dataset_id) WHERE deleted_at IS NULL;
 
--- 指标-维度绑定表
-CREATE TABLE IF NOT EXISTS metric_dimension_binding (
-    id              BIGSERIAL PRIMARY KEY,
-    metric_id       BIGINT NOT NULL,
-    dimension_id    BIGINT,
-    dimension_name  VARCHAR(256) NOT NULL,
-    dataset_id      BIGINT,
-    field_id        BIGINT,
-    created_at      TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    deleted_at      TIMESTAMP WITH TIME ZONE
+-- ============================================================================
+-- 指标-维度绑定
+-- ============================================================================
+CREATE TABLE metric_dimension_binding (
+    id             BIGINT   PRIMARY KEY,
+    metric_id      BIGINT   NOT NULL,
+    dimension_id   BIGINT,
+    dimension_name VARCHAR(128) NOT NULL,              -- 维度名称(冗余,便于展示)
+    dataset_id     BIGINT,
+    field_id       BIGINT,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at     TIMESTAMPTZ
 );
-
 COMMENT ON TABLE metric_dimension_binding IS '指标绑定的维度字段';
+COMMENT ON COLUMN metric_dimension_binding.dimension_name IS '维度名称(冗余,便于展示)';
 
-CREATE INDEX IF NOT EXISTS idx_metric_dim_binding_metric ON metric_dimension_binding(metric_id);
+CREATE INDEX idx_metric_dim_binding_metric ON metric_dimension_binding (metric_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_metric_dim_binding_dimension ON metric_dimension_binding (dimension_id) WHERE deleted_at IS NULL;
 
--- 指标×维度组合合法性表
-CREATE TABLE IF NOT EXISTS metric_dimension_compat (
-    metric_id       BIGINT NOT NULL,
-    dimension_id    BIGINT NOT NULL,
-    allowed         BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    deleted_at      TIMESTAMP WITH TIME ZONE,
+-- ============================================================================
+-- 指标×维度组合合法性
+-- ============================================================================
+CREATE TABLE metric_dimension_compat (
+    metric_id    BIGINT    NOT NULL,
+    dimension_id BIGINT    NOT NULL,
+    allowed      BOOLEAN   NOT NULL DEFAULT TRUE,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at   TIMESTAMPTZ,
     PRIMARY KEY (metric_id, dimension_id)
 );
+COMMENT ON TABLE metric_dimension_compat IS '指标×维度组合合法性';
+COMMENT ON COLUMN metric_dimension_compat.allowed IS '是否允许组合';
 
-COMMENT ON TABLE metric_dimension_compat IS '指标与维度组合是否允许';
+CREATE INDEX idx_metric_dim_compat_dimension ON metric_dimension_compat (dimension_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_metric_dim_compat_allowed ON metric_dimension_compat (metric_id, dimension_id, allowed) WHERE deleted_at IS NULL;
 
-CREATE INDEX IF NOT EXISTS idx_metric_dim_compat_dimension ON metric_dimension_compat(dimension_id);
-
--- 维度主表
-CREATE TABLE IF NOT EXISTS dimension (
-    id              BIGSERIAL PRIMARY KEY,
-    name            VARCHAR(256) NOT NULL,
-    code            VARCHAR(256),
-    business_name   VARCHAR(256),
-    folder          VARCHAR(128),
-    semantic_type   VARCHAR(32),
-    dictionary_id   BIGINT,
-    format          VARCHAR(32),
-    owner_id        BIGINT,
-    status          VARCHAR(32) NOT NULL DEFAULT 'draft',
-    created_by      BIGINT,
-    created_at      TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    deleted_at      TIMESTAMP WITH TIME ZONE
+-- ============================================================================
+-- 业务维度(可跨数据集)
+-- ============================================================================
+CREATE TABLE dimension (
+    id            BIGINT       PRIMARY KEY,
+    name          VARCHAR(128) NOT NULL,              -- 维度名称,全局唯一
+    code          VARCHAR(128),                       -- 维度标识(英文代码)
+    business_name VARCHAR(128),                       -- 业务名称
+    folder        VARCHAR(128),                       -- 所属文件夹
+    semantic_type VARCHAR(16)  NOT NULL DEFAULT 'category', -- 语义类型:geo/time/category
+    dictionary_id BIGINT,
+    format        TEXT,                               -- 格式(JSON 序列化字符串)
+    owner_id      BIGINT,                             -- 负责人 ID
+    status        VARCHAR(16)  NOT NULL DEFAULT 'draft',
+    created_by    BIGINT,
+    created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    deleted_at    TIMESTAMPTZ
 );
+COMMENT ON TABLE dimension IS '业务维度(可跨数据集绑定)';
+COMMENT ON COLUMN dimension.name IS '维度名称,全局唯一';
+COMMENT ON COLUMN dimension.semantic_type IS '语义类型:geo/time/category';
+COMMENT ON COLUMN dimension.status IS '状态:draft/published/offline/deprecated';
 
-COMMENT ON TABLE dimension IS '维度主表';
+CREATE UNIQUE INDEX uk_dimension_name ON dimension (name) WHERE deleted_at IS NULL;
+CREATE INDEX idx_dimension_status ON dimension (status) WHERE deleted_at IS NULL;
+CREATE INDEX idx_dimension_owner ON dimension (owner_id) WHERE deleted_at IS NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS uk_dimension_name ON dimension(name) WHERE deleted_at IS NULL;
-
--- 维度-数据集字段绑定表
-CREATE TABLE IF NOT EXISTS dimension_binding (
-    id              BIGSERIAL PRIMARY KEY,
-    dimension_id    BIGINT NOT NULL,
-    dataset_id      BIGINT NOT NULL,
-    field_id        BIGINT NOT NULL,
-    expr            TEXT,
-    created_at      TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    deleted_at      TIMESTAMP WITH TIME ZONE
+-- ============================================================================
+-- 维度-数据集字段绑定
+-- ============================================================================
+CREATE TABLE dimension_binding (
+    id            BIGINT   PRIMARY KEY,
+    dimension_id  BIGINT   NOT NULL,
+    dataset_id    BIGINT   NOT NULL,
+    field_id      BIGINT   NOT NULL,
+    expr          TEXT,                               -- 维度计算表达式(可空)
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at    TIMESTAMPTZ
 );
+COMMENT ON TABLE dimension_binding IS '维度-数据集字段绑定(一个维度可绑定多个数据集)';
+COMMENT ON COLUMN dimension_binding.expr IS '维度计算表达式(可空)';
 
-COMMENT ON TABLE dimension_binding IS '维度与数据集字段绑定关系';
-
-CREATE INDEX IF NOT EXISTS idx_dimension_binding_dimension ON dimension_binding(dimension_id);
-CREATE INDEX IF NOT EXISTS idx_dimension_binding_dataset ON dimension_binding(dataset_id);
+CREATE INDEX idx_dimension_binding_dimension ON dimension_binding (dimension_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_dimension_binding_dataset ON dimension_binding (dataset_id) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX uk_dimension_binding_dimension_dataset ON dimension_binding (dimension_id, dataset_id) WHERE deleted_at IS NULL;
