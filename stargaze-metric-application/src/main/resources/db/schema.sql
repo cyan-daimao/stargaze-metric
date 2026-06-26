@@ -13,7 +13,6 @@ DROP TABLE IF EXISTS metric CASCADE;
 -- 指标主表
 CREATE TABLE IF NOT EXISTS metric (
     id              BIGSERIAL PRIMARY KEY,
-    workspace_id    BIGINT NOT NULL,
     name            VARCHAR(256) NOT NULL,
     code            VARCHAR(128),
     business_name   VARCHAR(256),
@@ -46,9 +45,8 @@ COMMENT ON COLUMN metric.caliber IS '兼容旧字段的口径说明';
 COMMENT ON COLUMN metric.primary_dataset_id IS '主数据集 ID';
 COMMENT ON COLUMN metric.status IS '状态: draft/published/offline/deprecated';
 
-CREATE UNIQUE INDEX IF NOT EXISTS uk_metric_workspace_name ON metric(workspace_id, name) WHERE deleted_at IS NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS uk_metric_workspace_code ON metric(workspace_id, code) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_metric_workspace_status ON metric(workspace_id, status) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uk_metric_name ON metric(name) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uk_metric_code ON metric(code) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_metric_folder ON metric(folder) WHERE deleted_at IS NULL;
 
 -- 指标版本快照表
@@ -125,7 +123,6 @@ CREATE INDEX IF NOT EXISTS idx_metric_dim_compat_dimension ON metric_dimension_c
 -- 维度主表
 CREATE TABLE IF NOT EXISTS dimension (
     id              BIGSERIAL PRIMARY KEY,
-    workspace_id    BIGINT NOT NULL,
     name            VARCHAR(256) NOT NULL,
     code            VARCHAR(256),
     business_name   VARCHAR(256),
@@ -143,8 +140,7 @@ CREATE TABLE IF NOT EXISTS dimension (
 
 COMMENT ON TABLE dimension IS '维度主表';
 
-CREATE UNIQUE INDEX IF NOT EXISTS uk_dimension_workspace_name ON dimension(workspace_id, name) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_dimension_workspace_status ON dimension(workspace_id, status) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uk_dimension_name ON dimension(name) WHERE deleted_at IS NULL;
 
 -- 维度-数据集字段绑定表
 CREATE TABLE IF NOT EXISTS dimension_binding (

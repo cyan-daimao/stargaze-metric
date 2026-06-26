@@ -31,9 +31,9 @@ public interface MetricService {
 
     MetricDTO findById(String id);
 
-    PageDTO<MetricDTO> list(String workspaceId, Integer page, Integer size, String keyword, String status, String folder);
+    PageDTO<MetricDTO> list(Integer page, Integer size, String keyword, String status, String folder);
 
-    List<MetricDTO> list(String workspaceId, boolean publishedOnly);
+    List<MetricDTO> list(boolean publishedOnly);
 
     void delete(String id);
 
@@ -56,12 +56,12 @@ public interface MetricService {
     /**
      * 校验指标名称是否可用
      */
-    CheckNameResultDTO checkName(String workspaceId, String name, String excludeId);
+    CheckNameResultDTO checkName(String name, String excludeId);
 
     /**
      * 校验指标标识是否可用
      */
-    CheckNameResultDTO checkCode(String workspaceId, String code, String excludeId);
+    CheckNameResultDTO checkCode(String code, String excludeId);
 
     /**
      * 跨数据集维度重复检测
@@ -71,7 +71,7 @@ public interface MetricService {
     /**
      * 获取可同步的数据集列表
      */
-    PageDTO<DatasetListItemDTO> listSyncDatasets(String workspaceId, Integer page, Integer size, String keyword, String type, String datasource);
+    PageDTO<DatasetListItemDTO> listSyncDatasets(Integer page, Integer size, String keyword, String type, String datasource);
 
     /**
      * 从数据集一键同步度量字段为指标

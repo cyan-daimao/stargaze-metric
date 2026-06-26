@@ -27,9 +27,6 @@ public class MetricDTO {
     /** 主键 */
     private String id;
 
-    /** 空间 ID */
-    private String workspaceId;
-
     /** 指标名 */
     private String name;
 

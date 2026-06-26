@@ -27,12 +27,11 @@ public class DatasetController {
 
     @GetMapping
     public Response<PageDTO<DatasetListItemDTO>> list(
-            @RequestParam("workspaceId") String workspaceId,
             @RequestParam(value = "page", defaultValue = "1") Integer page,
             @RequestParam(value = "size", defaultValue = "20") Integer size,
             @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(value = "type", required = false) String type,
             @RequestParam(value = "status", required = false) String status) {
-        return Response.success(metricService.listSyncDatasets(workspaceId, page, size, keyword, type, status));
+        return Response.success(metricService.listSyncDatasets(page, size, keyword, type, status));
     }
 }

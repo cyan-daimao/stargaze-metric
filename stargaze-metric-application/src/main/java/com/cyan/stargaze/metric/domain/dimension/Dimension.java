@@ -27,10 +27,7 @@ public class Dimension {
     /** 主键 */
     private String id;
 
-    /** 空间 ID */
-    private String workspaceId;
-
-    /** 维度名(空间内唯一) */
+    /** 维度名(唯一) */
     private String name;
 
     /** 维度标识（字段名） */
@@ -70,14 +67,13 @@ public class Dimension {
     private OffsetDateTime deletedAt;
 
     private void validate() {
-        Assert.notBlank(this.workspaceId, new SilentException("空间 ID 不能为空"));
         Assert.notBlank(this.name, new SilentException("维度名不能为空"));
         Assert.notNull(this.semanticType, new SilentException("语义类型不能为空"));
     }
 
     public Dimension save(DimensionRepository repository) {
         validate();
-        Dimension existing = repository.findByName(this.workspaceId, this.name);
+        Dimension existing = repository.findByName(this.name);
         Assert.isNull(existing, new SilentException("维度名已存在"));
         this.status = MetricStatus.DRAFT;
         this.createdAt = OffsetDateTime.now();

@@ -64,7 +64,6 @@ public class DimensionController {
 
     @GetMapping
     public Response<PageDTO<DimensionDTO>> list(
-            @RequestParam("workspaceId") String workspaceId,
             @RequestParam(value = "page", defaultValue = "1") Integer page,
             @RequestParam(value = "size", defaultValue = "20") Integer size,
             @RequestParam(value = "keyword", required = false) String keyword,
@@ -72,7 +71,7 @@ public class DimensionController {
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "publishedOnly", defaultValue = "false") boolean publishedOnly) {
         if (publishedOnly) {
-            List<DimensionDTO> data = dimensionService.list(workspaceId, true).stream()
+            List<DimensionDTO> data = dimensionService.list(true).stream()
                     .map(this::toDTO).toList();
             return Response.success(new PageDTO<DimensionDTO>()
                     .setData(data)
@@ -80,7 +79,7 @@ public class DimensionController {
                     .setPage(1L)
                     .setSize((long) data.size()));
         }
-        var result = dimensionService.page(workspaceId, page, size, keyword, folder, status);
+        var result = dimensionService.page(page, size, keyword, folder, status);
         List<DimensionDTO> records = result.getRecords().stream().map(this::toDTO).toList();
         return Response.success(new PageDTO<DimensionDTO>()
                 .setData(records)

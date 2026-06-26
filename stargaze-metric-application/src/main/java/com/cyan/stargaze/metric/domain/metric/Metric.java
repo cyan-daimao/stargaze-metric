@@ -33,13 +33,10 @@ public class Metric {
     /** 主键 */
     private String id;
 
-    /** 空间 ID */
-    private String workspaceId;
-
-    /** 指标名(空间内唯一) */
+    /** 指标名(唯一) */
     private String name;
 
-    /** 指标标识（英文代码，空间内唯一） */
+    /** 指标标识（英文代码，唯一） */
     private String code;
 
     /** 业务名 */
@@ -109,7 +106,6 @@ public class Metric {
     private OffsetDateTime deletedAt;
 
     private void validate() {
-        Assert.notBlank(this.workspaceId, new SilentException("空间 ID 不能为空"));
         Assert.notBlank(this.name, new SilentException("指标名不能为空"));
         Assert.notBlank(this.code, new SilentException("指标标识不能为空"));
         Assert.notNull(this.type, new SilentException("指标类型不能为空"));
@@ -119,13 +115,13 @@ public class Metric {
     }
 
     /**
-     * 保存(新建,空间内名称与标识唯一)
+     * 保存(新建,名称与标识唯一)
      */
     public Metric save(MetricRepository repository) {
         validate();
-        Metric existing = repository.findByName(this.workspaceId, this.name);
+        Metric existing = repository.findByName(this.name);
         Assert.isNull(existing, new SilentException("指标名已存在"));
-        Metric existingCode = repository.findByCode(this.workspaceId, this.code);
+        Metric existingCode = repository.findByCode(this.code);
         Assert.isNull(existingCode, new SilentException("指标标识已存在"));
         this.status = MetricStatus.DRAFT;
         this.version = 1;

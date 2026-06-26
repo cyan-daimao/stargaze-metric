@@ -16,13 +16,13 @@ public interface MetricRepository {
 
     Metric findById(String id);
 
-    Metric findByName(String workspaceId, String name);
+    Metric findByName(String name);
 
-    Metric findByCode(String workspaceId, String code);
+    Metric findByCode(String code);
 
-    List<Metric> listByWorkspace(String workspaceId, MetricStatus status);
+    List<Metric> list(MetricStatus status);
 
-    IPage<Metric> pageByWorkspace(IPage<Metric> page, String workspaceId, String keyword, MetricStatus status, String folder);
+    IPage<Metric> page(IPage<Metric> page, String keyword, MetricStatus status, String folder);
 
     Metric save(Metric metric);
 

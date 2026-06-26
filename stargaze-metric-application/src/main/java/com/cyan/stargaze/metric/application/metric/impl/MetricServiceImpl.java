@@ -113,11 +113,11 @@ public class MetricServiceImpl implements MetricService {
     }
 
     @Override
-    public PageDTO<MetricDTO> list(String workspaceId, Integer page, Integer size, String keyword, String status, String folder) {
+    public PageDTO<MetricDTO> list(Integer page, Integer size, String keyword, String status, String folder) {
         int p = page == null || page < 1 ? 1 : page;
         int s = size == null || size < 1 ? 20 : size;
         MetricStatus metricStatus = MetricStatus.fromCode(status);
-        IPage<Metric> result = metricRepository.pageByWorkspace(new Page<>(p, s), workspaceId, keyword, metricStatus, folder);
+        IPage<Metric> result = metricRepository.page(new Page<>(p, s), keyword, metricStatus, folder);
         List<MetricDTO> records = result.getRecords().stream()
                 .map(m -> enrichDTO(toDTO(m), m.getId()))
                 .toList();
@@ -129,9 +129,9 @@ public class MetricServiceImpl implements MetricService {
     }
 
     @Override
-    public List<MetricDTO> list(String workspaceId, boolean publishedOnly) {
+    public List<MetricDTO> list(boolean publishedOnly) {
         MetricStatus status = publishedOnly ? MetricStatus.PUBLISHED : null;
-        return metricRepository.listByWorkspace(workspaceId, status).stream()
+        return metricRepository.list(status).stream()
                 .map(m -> enrichDTO(toDTO(m), m.getId())).toList();
     }
 
@@ -202,11 +202,11 @@ public class MetricServiceImpl implements MetricService {
     }
 
     @Override
-    public CheckNameResultDTO checkName(String workspaceId, String name, String excludeId) {
+    public CheckNameResultDTO checkName(String name, String excludeId) {
         if (name == null || name.isBlank()) {
             return new CheckNameResultDTO().setAvailable(false).setMessage("指标名称不能为空");
         }
-        Metric existing = metricRepository.findByName(workspaceId, name.trim());
+        Metric existing = metricRepository.findByName(name.trim());
         if (existing != null && (excludeId == null || !excludeId.equals(existing.getId()))) {
             return new CheckNameResultDTO()
                     .setAvailable(false)
@@ -216,11 +216,11 @@ public class MetricServiceImpl implements MetricService {
     }
 
     @Override
-    public CheckNameResultDTO checkCode(String workspaceId, String code, String excludeId) {
+    public CheckNameResultDTO checkCode(String code, String excludeId) {
         if (code == null || code.isBlank()) {
             return new CheckNameResultDTO().setAvailable(false).setMessage("指标标识不能为空");
         }
-        Metric existing = metricRepository.findByCode(workspaceId, code.trim());
+        Metric existing = metricRepository.findByCode(code.trim());
         if (existing != null && (excludeId == null || !excludeId.equals(existing.getId()))) {
             return new CheckNameResultDTO()
                     .setAvailable(false)
@@ -282,11 +282,11 @@ public class MetricServiceImpl implements MetricService {
     }
 
     @Override
-    public PageDTO<DatasetListItemDTO> listSyncDatasets(String workspaceId, Integer page, Integer size, String keyword, String type, String datasource) {
+    public PageDTO<DatasetListItemDTO> listSyncDatasets(Integer page, Integer size, String keyword, String type, String datasource) {
         int p = page == null || page < 1 ? 1 : page;
         int s = size == null || size < 1 ? 20 : size;
         Response<com.cyan.arch.common.api.Page<com.cyan.stargaze.dataset.client.dto.DatasetListItemDTO>> resp =
-                datasetClient.page(workspaceId, p, s, keyword, type, null);
+                datasetClient.page(p, s, keyword, type, null);
         Assert.notNull(resp, new SilentException("数据集服务无响应"));
         Assert.isTrue(resp.getCode() == 200 && resp.getData() != null,
                 new SilentException("数据集服务返回错误:[" + resp.getCode() + "] " + resp.getMessage()));
@@ -341,8 +341,8 @@ public class MetricServiceImpl implements MetricService {
             }
             String code = toCode(metricName);
             String expression = "SUM([" + field.getOriginName() + "])";
-            Metric existingByName = metricRepository.findByName("", metricName);
-            Metric existingByCode = metricRepository.findByCode("", code);
+            Metric existingByName = metricRepository.findByName(metricName);
+            Metric existingByCode = metricRepository.findByCode(code);
             if (existingByName != null) {
                 result.getDuplicates().add(new MetricSyncResultDTO.DuplicateMetricDTO()
                         .setNewName(metricName)
@@ -359,7 +359,6 @@ public class MetricServiceImpl implements MetricService {
             }
             try {
                 MetricCmd cmd = new MetricCmd()
-                        .setWorkspaceId("")
                         .setName(metricName)
                         .setCode(code)
                         .setBusinessName(metricName)
@@ -502,7 +501,6 @@ public class MetricServiceImpl implements MetricService {
     private MetricDTO toDTO(Metric metric) {
         return new MetricDTO()
                 .setId(metric.getId())
-                .setWorkspaceId(metric.getWorkspaceId())
                 .setName(metric.getName())
                 .setCode(metric.getCode())
                 .setBusinessName(metric.getBusinessName())
@@ -530,7 +528,6 @@ public class MetricServiceImpl implements MetricService {
     private DimensionDTO toDimensionDTO(Dimension dimension) {
         return new DimensionDTO()
                 .setId(dimension.getId())
-                .setWorkspaceId(dimension.getWorkspaceId())
                 .setName(dimension.getName())
                 .setBusinessName(dimension.getBusinessName())
                 .setSemanticType(dimension.getSemanticType())

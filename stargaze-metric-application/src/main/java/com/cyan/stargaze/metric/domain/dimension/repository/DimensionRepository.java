@@ -16,11 +16,11 @@ public interface DimensionRepository {
 
     Dimension findById(String id);
 
-    Dimension findByName(String workspaceId, String name);
+    Dimension findByName(String name);
 
-    List<Dimension> listByWorkspace(String workspaceId, MetricStatus status);
+    List<Dimension> list(MetricStatus status);
 
-    IPage<Dimension> pageByWorkspace(IPage<Dimension> page, String workspaceId, String keyword, MetricStatus status, String folder);
+    IPage<Dimension> page(IPage<Dimension> page, String keyword, MetricStatus status, String folder);
 
     Dimension save(Dimension dimension);
 

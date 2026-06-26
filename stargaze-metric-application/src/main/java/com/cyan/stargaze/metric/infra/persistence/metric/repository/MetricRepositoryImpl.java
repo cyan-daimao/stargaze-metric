@@ -32,34 +32,30 @@ public class MetricRepositoryImpl implements MetricRepository {
     }
 
     @Override
-    public Metric findByName(String workspaceId, String name) {
+    public Metric findByName(String name) {
         MetricDO doObj = mapper.selectOne(new LambdaQueryWrapper<MetricDO>()
-                .eq(MetricDO::getWorkspaceId, IdUtil.toLong(workspaceId))
                 .eq(MetricDO::getName, name));
         return doObj == null ? null : convert.toMetric(doObj);
     }
 
     @Override
-    public Metric findByCode(String workspaceId, String code) {
+    public Metric findByCode(String code) {
         MetricDO doObj = mapper.selectOne(new LambdaQueryWrapper<MetricDO>()
-                .eq(MetricDO::getWorkspaceId, IdUtil.toLong(workspaceId))
                 .eq(MetricDO::getCode, code));
         return doObj == null ? null : convert.toMetric(doObj);
     }
 
     @Override
-    public List<Metric> listByWorkspace(String workspaceId, MetricStatus status) {
+    public List<Metric> list(MetricStatus status) {
         LambdaQueryWrapper<MetricDO> wrapper = new LambdaQueryWrapper<MetricDO>()
-                .eq(MetricDO::getWorkspaceId, IdUtil.toLong(workspaceId))
                 .eq(status != null, MetricDO::getStatus, status)
                 .orderByDesc(MetricDO::getCreatedAt);
         return mapper.selectList(wrapper).stream().map(convert::toMetric).toList();
     }
 
     @Override
-    public IPage<Metric> pageByWorkspace(IPage<Metric> page, String workspaceId, String keyword, MetricStatus status, String folder) {
+    public IPage<Metric> page(IPage<Metric> page, String keyword, MetricStatus status, String folder) {
         LambdaQueryWrapper<MetricDO> wrapper = new LambdaQueryWrapper<MetricDO>()
-                .eq(MetricDO::getWorkspaceId, IdUtil.toLong(workspaceId))
                 .and(keyword != null && !keyword.isBlank(), w -> w
                         .like(MetricDO::getName, keyword)
                         .or()

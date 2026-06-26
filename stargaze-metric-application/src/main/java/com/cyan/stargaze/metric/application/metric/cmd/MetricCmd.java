@@ -28,10 +28,6 @@ public class MetricCmd {
     /** 主键(更新必填) */
     private String id;
 
-    /** 空间 ID */
-    @NotBlank(message = "空间 ID 不能为空")
-    private String workspaceId;
-
     /** 指标名 */
     @NotBlank(message = "指标名不能为空")
     private String name;

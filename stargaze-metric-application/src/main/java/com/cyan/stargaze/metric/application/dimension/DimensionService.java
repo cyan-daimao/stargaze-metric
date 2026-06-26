@@ -22,9 +22,9 @@ public interface DimensionService {
 
     Dimension findById(String id);
 
-    List<Dimension> list(String workspaceId, boolean publishedOnly);
+    List<Dimension> list(boolean publishedOnly);
 
-    IPage<Dimension> page(String workspaceId, Integer page, Integer size, String keyword, String folder, String status);
+    IPage<Dimension> page(Integer page, Integer size, String keyword, String folder, String status);
 
     void delete(String id);
 

@@ -34,8 +34,8 @@ public class MetricRpcController implements MetricClient {
     }
 
     @Override
-    public Response<List<MetricDTO>> listPublished(String workspaceId) {
-        return Response.success(metricService.list(workspaceId, true));
+    public Response<List<MetricDTO>> listPublished() {
+        return Response.success(metricService.list(true));
     }
 
     @Override

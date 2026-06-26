@@ -32,26 +32,23 @@ public class DimensionRepositoryImpl implements DimensionRepository {
     }
 
     @Override
-    public Dimension findByName(String workspaceId, String name) {
+    public Dimension findByName(String name) {
         DimensionDO doObj = mapper.selectOne(new LambdaQueryWrapper<DimensionDO>()
-                .eq(DimensionDO::getWorkspaceId, IdUtil.toLong(workspaceId))
                 .eq(DimensionDO::getName, name));
         return doObj == null ? null : convert.toDimension(doObj);
     }
 
     @Override
-    public List<Dimension> listByWorkspace(String workspaceId, MetricStatus status) {
+    public List<Dimension> list(MetricStatus status) {
         LambdaQueryWrapper<DimensionDO> wrapper = new LambdaQueryWrapper<DimensionDO>()
-                .eq(DimensionDO::getWorkspaceId, IdUtil.toLong(workspaceId))
                 .eq(status != null, DimensionDO::getStatus, status)
                 .orderByDesc(DimensionDO::getCreatedAt);
         return mapper.selectList(wrapper).stream().map(convert::toDimension).toList();
     }
 
     @Override
-    public IPage<Dimension> pageByWorkspace(IPage<Dimension> page, String workspaceId, String keyword, MetricStatus status, String folder) {
+    public IPage<Dimension> page(IPage<Dimension> page, String keyword, MetricStatus status, String folder) {
         LambdaQueryWrapper<DimensionDO> wrapper = new LambdaQueryWrapper<DimensionDO>()
-                .eq(DimensionDO::getWorkspaceId, IdUtil.toLong(workspaceId))
                 .and(keyword != null && !keyword.isBlank(), w -> w
                         .like(DimensionDO::getName, keyword)
                         .or()

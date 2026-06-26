@@ -25,8 +25,6 @@ import java.time.OffsetDateTime;
 public class MetricDO {
     @TableId(value = "id", type = IdType.ASSIGN_ID)
     private Long id;
-    @TableField("workspace_id")
-    private Long workspaceId;
     @TableField("name")
     private String name;
     @TableField("code")

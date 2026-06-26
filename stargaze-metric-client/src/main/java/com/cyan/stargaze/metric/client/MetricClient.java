@@ -30,10 +30,10 @@ public interface MetricClient {
                                        @RequestParam("dataset_id") String datasetId);
 
     /**
-     * 列出空间内已发布指标(dashboard 选指标用)
+     * 列出已发布指标(dashboard 选指标用)
      */
     @GetMapping("/list")
-    Response<List<MetricDTO>> listPublished(@RequestParam("workspace_id") String workspaceId);
+    Response<List<MetricDTO>> listPublished();
 
     /**
      * 校验指标×维度组合合法性

@@ -61,17 +61,17 @@ public class DimensionServiceImpl implements DimensionService {
     }
 
     @Override
-    public List<Dimension> list(String workspaceId, boolean publishedOnly) {
+    public List<Dimension> list(boolean publishedOnly) {
         MetricStatus status = publishedOnly ? MetricStatus.PUBLISHED : null;
-        return dimensionRepository.listByWorkspace(workspaceId, status);
+        return dimensionRepository.list(status);
     }
 
     @Override
-    public IPage<Dimension> page(String workspaceId, Integer page, Integer size, String keyword, String folder, String status) {
+    public IPage<Dimension> page(Integer page, Integer size, String keyword, String folder, String status) {
         int p = page == null || page < 1 ? 1 : page;
         int s = size == null || size < 1 ? 20 : size;
         MetricStatus metricStatus = MetricStatus.fromCode(status);
-        return dimensionRepository.pageByWorkspace(new Page<>(p, s), workspaceId, keyword, metricStatus, folder);
+        return dimensionRepository.page(new Page<>(p, s), keyword, metricStatus, folder);
     }
 
     @Override

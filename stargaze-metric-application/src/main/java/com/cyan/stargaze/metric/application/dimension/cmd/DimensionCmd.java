@@ -23,10 +23,6 @@ public class DimensionCmd {
     /** 主键(更新必填) */
     private String id;
 
-    /** 空间 ID */
-    @NotBlank(message = "空间 ID 不能为空")
-    private String workspaceId;
-
     /** 维度名 */
     @NotBlank(message = "维度名不能为空")
     private String name;

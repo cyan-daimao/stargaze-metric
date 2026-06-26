@@ -32,7 +32,6 @@ import java.util.List;
 public abstract class MetricInfraConvert {
 
     @Mapping(target = "id", source = "id", qualifiedByName = "l2s")
-    @Mapping(target = "workspaceId", source = "workspaceId", qualifiedByName = "l2s")
     @Mapping(target = "primaryDatasetId", source = "primaryDatasetId", qualifiedByName = "l2s")
     @Mapping(target = "ownerId", source = "ownerId", qualifiedByName = "l2s")
     @Mapping(target = "createdBy", source = "createdBy", qualifiedByName = "l2s")
@@ -40,7 +39,6 @@ public abstract class MetricInfraConvert {
     public abstract Metric toMetric(MetricDO doObj);
 
     @Mapping(target = "id", source = "id", qualifiedByName = "s2l")
-    @Mapping(target = "workspaceId", source = "workspaceId", qualifiedByName = "s2l")
     @Mapping(target = "primaryDatasetId", source = "primaryDatasetId", qualifiedByName = "s2l")
     @Mapping(target = "ownerId", source = "ownerId", qualifiedByName = "s2l")
     @Mapping(target = "createdBy", source = "createdBy", qualifiedByName = "s2l")
@@ -76,14 +74,12 @@ public abstract class MetricInfraConvert {
     public abstract List<MetricDimensionBinding> toMetricDimensionBindingList(List<MetricDimensionBindingDO> doList);
 
     @Mapping(target = "id", source = "id", qualifiedByName = "l2s")
-    @Mapping(target = "workspaceId", source = "workspaceId", qualifiedByName = "l2s")
     @Mapping(target = "dictionaryId", source = "dictionaryId", qualifiedByName = "l2s")
     @Mapping(target = "ownerId", source = "ownerId", qualifiedByName = "l2s")
     @Mapping(target = "createdBy", source = "createdBy", qualifiedByName = "l2s")
     public abstract Dimension toDimension(DimensionDO doObj);
 
     @Mapping(target = "id", source = "id", qualifiedByName = "s2l")
-    @Mapping(target = "workspaceId", source = "workspaceId", qualifiedByName = "s2l")
     @Mapping(target = "dictionaryId", source = "dictionaryId", qualifiedByName = "s2l")
     @Mapping(target = "ownerId", source = "ownerId", qualifiedByName = "s2l")
     @Mapping(target = "createdBy", source = "createdBy", qualifiedByName = "s2l")

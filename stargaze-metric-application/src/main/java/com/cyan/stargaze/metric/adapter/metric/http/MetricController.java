@@ -64,7 +64,6 @@ public class MetricController {
 
     @GetMapping
     public Response<PageDTO<MetricDTO>> list(
-            @RequestParam("workspaceId") String workspaceId,
             @RequestParam(value = "page", defaultValue = "1") Integer page,
             @RequestParam(value = "size", defaultValue = "20") Integer size,
             @RequestParam(value = "keyword", required = false) String keyword,
@@ -73,12 +72,12 @@ public class MetricController {
             @RequestParam(value = "publishedOnly", defaultValue = "false") boolean publishedOnly) {
         if (publishedOnly) {
             return Response.success(new PageDTO<MetricDTO>()
-                    .setData(metricService.list(workspaceId, true))
+                    .setData(metricService.list(true))
                     .setTotal(0)
                     .setPage(1L)
                     .setSize(20L));
         }
-        return Response.success(metricService.list(workspaceId, page, size, keyword, status, folder));
+        return Response.success(metricService.list(page, size, keyword, status, folder));
     }
 
     @DeleteMapping("/{id}")
@@ -105,18 +104,16 @@ public class MetricController {
     // ---- 校验 ----
     @GetMapping("/check-name")
     public Response<CheckNameResultDTO> checkName(
-            @RequestParam("workspaceId") String workspaceId,
             @RequestParam("name") String name,
             @RequestParam(value = "excludeId", required = false) String excludeId) {
-        return Response.success(metricService.checkName(workspaceId, name, excludeId));
+        return Response.success(metricService.checkName(name, excludeId));
     }
 
     @GetMapping("/check-code")
     public Response<CheckNameResultDTO> checkCode(
-            @RequestParam("workspaceId") String workspaceId,
             @RequestParam("code") String code,
             @RequestParam(value = "excludeId", required = false) String excludeId) {
-        return Response.success(metricService.checkCode(workspaceId, code, excludeId));
+        return Response.success(metricService.checkCode(code, excludeId));
     }
 
     @PostMapping("/check-dimensions")
@@ -127,13 +124,12 @@ public class MetricController {
     // ---- 一键同步 ----
     @GetMapping("/sync-datasets")
     public Response<PageDTO<DatasetListItemDTO>> listSyncDatasets(
-            @RequestParam("workspaceId") String workspaceId,
             @RequestParam(value = "page", defaultValue = "1") Integer page,
             @RequestParam(value = "size", defaultValue = "5") Integer size,
             @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(value = "type", required = false) String type,
             @RequestParam(value = "datasource", required = false) String datasource) {
-        return Response.success(metricService.listSyncDatasets(workspaceId, page, size, keyword, type, datasource));
+        return Response.success(metricService.listSyncDatasets(page, size, keyword, type, datasource));
     }
 
     @PostMapping("/sync")

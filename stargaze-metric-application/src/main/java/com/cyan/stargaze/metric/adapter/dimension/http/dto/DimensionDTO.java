@@ -25,9 +25,6 @@ public class DimensionDTO {
     /** 主键 */
     private String id;
 
-    /** 空间 ID */
-    private String workspaceId;
-
     /** 维度名 */
     private String name;
 
