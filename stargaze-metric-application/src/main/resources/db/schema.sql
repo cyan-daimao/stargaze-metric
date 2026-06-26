@@ -1,5 +1,14 @@
 -- 指标平台完整数据库 schema（PostgreSQL）
 -- 默认 schema: stargaze_metric
+-- 警告：以下 DROP 语句会清空数据，仅用于开发/测试环境重建表结构
+
+DROP TABLE IF EXISTS metric_dimension_compat CASCADE;
+DROP TABLE IF EXISTS metric_dimension_binding CASCADE;
+DROP TABLE IF EXISTS metric_binding CASCADE;
+DROP TABLE IF EXISTS metric_version CASCADE;
+DROP TABLE IF EXISTS dimension_binding CASCADE;
+DROP TABLE IF EXISTS dimension CASCADE;
+DROP TABLE IF EXISTS metric CASCADE;
 
 -- 指标主表
 CREATE TABLE IF NOT EXISTS metric (
