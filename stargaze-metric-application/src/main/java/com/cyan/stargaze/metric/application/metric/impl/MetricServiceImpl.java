@@ -46,7 +46,6 @@ import com.cyan.stargaze.metric.enums.MetricFormat;
 import com.cyan.stargaze.metric.enums.MetricStatus;
 import com.cyan.stargaze.metric.enums.MetricType;
 import com.cyan.stargaze.metric.enums.SemanticType;
-import com.cyan.stargaze.metric.infra.external.DatasetQueryClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -82,7 +81,6 @@ public class MetricServiceImpl implements MetricService {
     private final DimensionBindingRepository dimensionBindingRepository;
     private final MetricAppConvert convert;
     private final DatasetClient datasetClient;
-    private final DatasetQueryClient datasetQueryClient;
 
     @Override
     @Transactional
@@ -287,32 +285,33 @@ public class MetricServiceImpl implements MetricService {
     public PageDTO<DatasetListItemDTO> listSyncDatasets(String workspaceId, Integer page, Integer size, String keyword, String type, String datasource) {
         int p = page == null || page < 1 ? 1 : page;
         int s = size == null || size < 1 ? 20 : size;
-        Response<DatasetQueryClient.PageResult<DatasetQueryClient.DatasetItem>> resp = datasetQueryClient.list(
-                workspaceId, p, s, keyword, type, null);
+        Response<com.cyan.stargaze.dataset.client.dto.PageDTO<com.cyan.stargaze.dataset.client.dto.DatasetListItemDTO>> resp =
+                datasetClient.page(workspaceId, p, s, keyword, type, null);
         Assert.notNull(resp, new SilentException("数据集服务无响应"));
         Assert.isTrue(resp.getCode() == 200 && resp.getData() != null,
                 new SilentException("数据集服务返回错误:[" + resp.getCode() + "] " + resp.getMessage()));
 
-        List<DatasetListItemDTO> list = resp.getData().list().stream()
+        List<com.cyan.stargaze.dataset.client.dto.DatasetListItemDTO> sourceList = resp.getData().getData();
+        List<DatasetListItemDTO> list = sourceList.stream()
                 .map(item -> new DatasetListItemDTO()
-                        .setId(item.id())
-                        .setName(item.name())
-                        .setCode(item.name())
-                        .setType(item.sourceType())
-                        .setDatasource(item.datasourceName())
+                        .setId(item.getId())
+                        .setName(item.getName())
+                        .setCode(item.getName())
+                        .setType(item.getSourceType())
+                        .setDatasource(item.getDatasourceName())
                         .setSchema("")
-                        .setFields(item.fieldCount())
+                        .setFields(item.getFieldCount())
                         .setRows("")
-                        .setStatus(item.status())
-                        .setMetricCount(item.measureCount())
-                        .setDimensionCount(item.dimensionCount())
-                        .setUpdateTime(item.updatedAt()))
+                        .setStatus(item.getStatus())
+                        .setMetricCount(item.getMeasureCount())
+                        .setDimensionCount(item.getDimensionCount())
+                        .setUpdateTime(item.getUpdatedAt() == null ? null : item.getUpdatedAt().toString()))
                 .toList();
         return new PageDTO<DatasetListItemDTO>()
                 .setData(list)
-                .setTotal(resp.getData().total())
-                .setPage((long) resp.getData().page())
-                .setSize((long) resp.getData().size());
+                .setTotal(resp.getData().getTotal())
+                .setPage(resp.getData().getPage())
+                .setSize(resp.getData().getSize());
     }
 
     @Override
