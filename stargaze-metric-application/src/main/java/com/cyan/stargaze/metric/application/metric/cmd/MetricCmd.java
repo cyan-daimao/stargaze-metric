@@ -56,18 +56,15 @@ public class MetricCmd {
     @NotNull(message = "聚合方式不能为空")
     private MeasureKind aggregation;
 
-    /** 计算表达式（对应原 DSL） */
+    /** 指标 DSL */
     @NotBlank(message = "计算表达式不能为空")
-    private String expression;
+    private String dsl;
 
     /** 过滤条件 */
     private String filterCondition;
 
     /** 小数位 */
     private Integer precision;
-
-    /** 口径说明（兼容旧字段） */
-    private String caliber;
 
     /** 主数据集 ID */
     @NotBlank(message = "主数据集不能为空")

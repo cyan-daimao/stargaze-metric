@@ -25,8 +25,6 @@ public interface MetricAppConvert {
     MetricAppConvert INSTANCE = Mappers.getMapper(MetricAppConvert.class);
 
     @Mapping(target = "measureKind", source = "aggregation")
-    @Mapping(target = "dsl", source = "expression")
-    @Mapping(target = "caliber", source = "description")
     Metric toMetric(MetricCmd cmd);
 
     MetricBinding toMetricBinding(MetricBindingCmd cmd);

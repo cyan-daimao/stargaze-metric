@@ -41,16 +41,12 @@ public class MetricDO {
     private MetricType type;
     @TableField("measure_kind")
     private MeasureKind measureKind;
-    @TableField("expression")
-    private String expression;
+    @TableField("dsl")
+    private String dsl;
     @TableField("filter_condition")
     private String filterCondition;
     @TableField("precision")
     private Integer precision;
-    @TableField("dsl")
-    private String dsl;
-    @TableField("caliber")
-    private String caliber;
     @TableField("primary_dataset_id")
     private Long primaryDatasetId;
     @TableField("owner_id")

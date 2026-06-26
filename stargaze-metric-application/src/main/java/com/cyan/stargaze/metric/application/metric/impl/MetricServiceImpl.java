@@ -152,8 +152,7 @@ public class MetricServiceImpl implements MetricService {
         MetricVersion version = new MetricVersion()
                 .setMetricId(metric.getId())
                 .setVersion(metric.getVersion())
-                .setDsl(metric.getExpression())
-                .setCaliber(metric.getDescription())
+                .setDsl(metric.getDsl())
                 .setChangeLog("发布")
                 .setCreatedBy(metric.getUpdatedBy());
         metricVersionRepository.save(version);
@@ -166,14 +165,6 @@ public class MetricServiceImpl implements MetricService {
     public MetricDTO offline(String id) {
         Metric metric = loadMetric(id);
         metric = metric.offline(metricRepository);
-        return enrichDTO(toDTO(metric), id);
-    }
-
-    @Override
-    @Transactional
-    public MetricDTO deprecate(String id) {
-        Metric metric = loadMetric(id);
-        metric = metric.deprecate(metricRepository);
         return enrichDTO(toDTO(metric), id);
     }
 
@@ -340,7 +331,7 @@ public class MetricServiceImpl implements MetricService {
                 continue;
             }
             String code = toCode(metricName);
-            String expression = "SUM([" + field.getOriginName() + "])";
+            String dsl = "SUM([" + field.getOriginName() + "])";
             Metric existingByName = metricRepository.findByName(metricName);
             Metric existingByCode = metricRepository.findByCode(code);
             if (existingByName != null) {
@@ -367,7 +358,7 @@ public class MetricServiceImpl implements MetricService {
                         .setFormat(MetricFormat.NUMBER)
                         .setType(MetricType.ATOMIC)
                         .setAggregation(MeasureKind.SUM)
-                        .setExpression(expression)
+                        .setDsl(dsl)
                         .setPrimaryDatasetId(datasetId)
                         .setPrimaryFieldId(field.getId())
                         .setSecondaryDatasetIds(Collections.emptyList())
@@ -389,7 +380,7 @@ public class MetricServiceImpl implements MetricService {
         MetricBinding binding = metricBindingRepository.findByMetricAndDataset(metricId, datasetId);
         Assert.notNull(binding, new SilentException("指标未绑定该数据集"));
         String dsl = (binding.getDslOverride() != null && !binding.getDslOverride().isBlank())
-                ? binding.getDslOverride() : metric.getExpression();
+                ? binding.getDslOverride() : metric.getDsl();
         List<FieldRefDTO> fields = new ArrayList<>();
         var resp = datasetClient.resolveField(datasetId, binding.getFieldId());
         if (resp != null && resp.getData() != null) {
@@ -510,11 +501,9 @@ public class MetricServiceImpl implements MetricService {
                 .setType(metric.getType())
                 .setMeasureKind(metric.getMeasureKind())
                 .setAggregation(metric.getMeasureKind())
-                .setExpression(metric.getExpression())
+                .setDsl(metric.getDsl())
                 .setFilterCondition(metric.getFilterCondition())
                 .setPrecision(metric.getPrecision())
-                .setDsl(metric.getDsl())
-                .setCaliber(metric.getCaliber())
                 .setPrimaryDatasetId(metric.getPrimaryDatasetId())
                 .setStatus(metric.getStatus())
                 .setVersion(metric.getVersion())

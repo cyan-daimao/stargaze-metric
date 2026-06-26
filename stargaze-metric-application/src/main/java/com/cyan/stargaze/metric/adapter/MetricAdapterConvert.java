@@ -28,8 +28,6 @@ public interface MetricAdapterConvert {
 
     @Mapping(target = "aggregation", source = "measureKind")
     @Mapping(target = "dimensions", ignore = true)
-    @Mapping(target = "dsl", ignore = true)
-    @Mapping(target = "caliber", ignore = true)
     MetricDTO toMetricDTO(Metric metric);
 
     List<MetricDTO> toMetricDTOList(List<Metric> metrics);

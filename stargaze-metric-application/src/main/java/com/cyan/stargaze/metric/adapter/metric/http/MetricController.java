@@ -96,11 +96,6 @@ public class MetricController {
         return Response.success(metricService.offline(id));
     }
 
-    @PostMapping("/{id}/deprecate")
-    public Response<MetricDTO> deprecate(@PathVariable String id) {
-        return Response.success(metricService.deprecate(id));
-    }
-
     // ---- 校验 ----
     @GetMapping("/check-name")
     public Response<CheckNameResultDTO> checkName(

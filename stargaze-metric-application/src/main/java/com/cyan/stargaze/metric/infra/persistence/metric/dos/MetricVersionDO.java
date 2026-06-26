@@ -27,8 +27,6 @@ public class MetricVersionDO {
     private Integer version;
     @TableField("dsl")
     private String dsl;
-    @TableField("caliber")
-    private String caliber;
     @TableField("change_log")
     private String changeLog;
     @TableField("created_by")

@@ -31,9 +31,6 @@ public class MetricVersion {
     /** DSL 快照 */
     private String dsl;
 
-    /** 口径说明快照 */
-    private String caliber;
-
     /** 变更日志 */
     private String changeLog;
 

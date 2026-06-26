@@ -18,7 +18,7 @@ import java.util.List;
 /**
  * 业务指标(充血模型,口径统一)。
  * <p>
- * 状态机:draft → published(口径冻结,不可改 expression)→ offline/deprecated。
+ * 状态机:draft → published(口径冻结,不可改 dsl)→ offline。
  * 版本管理:发布/口径变更记 metric_version。
  *
  * @author cy.Y
@@ -57,20 +57,14 @@ public class Metric {
     /** 聚合方式 */
     private MeasureKind measureKind;
 
-    /** 计算表达式（对应原 DSL） */
-    private String expression;
+    /** 指标 DSL */
+    private String dsl;
 
     /** 过滤条件 */
     private String filterCondition;
 
     /** 小数位 */
     private Integer precision;
-
-    /** 指标 DSL(兼容旧字段) */
-    private String dsl;
-
-    /** 口径说明(兼容旧字段) */
-    private String caliber;
 
     /** 主数据集 ID */
     private String primaryDatasetId;
@@ -110,7 +104,7 @@ public class Metric {
         Assert.notBlank(this.code, new SilentException("指标标识不能为空"));
         Assert.notNull(this.type, new SilentException("指标类型不能为空"));
         Assert.notNull(this.measureKind, new SilentException("聚合方式不能为空"));
-        Assert.notBlank(this.expression, new SilentException("计算表达式不能为空"));
+        Assert.notBlank(this.dsl, new SilentException("计算表达式不能为空"));
         Assert.notBlank(this.primaryDatasetId, new SilentException("主数据集不能为空"));
     }
 
@@ -131,7 +125,7 @@ public class Metric {
     }
 
     /**
-     * 更新(仅 draft 可改 expression;published 走版本)
+     * 更新(仅 draft 可改 dsl;published 走版本)
      */
     public Metric update(MetricRepository repository) {
         Assert.notBlank(this.id, new SilentException("指标 ID 不能为空"));
@@ -161,17 +155,6 @@ public class Metric {
         Assert.isTrue(this.status == MetricStatus.PUBLISHED,
                 new SilentException("仅已发布指标可下线"));
         this.status = MetricStatus.OFFLINE;
-        this.updatedAt = OffsetDateTime.now();
-        return repository.update(this);
-    }
-
-    /**
-     * 废弃:published → deprecated(兼容旧状态)
-     */
-    public Metric deprecate(MetricRepository repository) {
-        Assert.isTrue(this.status == MetricStatus.PUBLISHED,
-                new SilentException("仅已发布指标可废弃"));
-        this.status = MetricStatus.DEPRECATED;
         this.updatedAt = OffsetDateTime.now();
         return repository.update(this);
     }

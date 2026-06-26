@@ -37,11 +37,9 @@ CREATE TABLE metric (
     format          VARCHAR(32),                        -- 格式
     type            VARCHAR(16)  NOT NULL,              -- 类型:atomic/derived/window
     measure_kind    VARCHAR(16)  NOT NULL,              -- 度量方式:sum/avg/count/distinct_count/max/min/expr
-    expression      TEXT,                               -- 计算表达式
+    dsl             TEXT,                               -- 指标 DSL
     filter_condition TEXT,                              -- 过滤条件
     precision       INT,                                -- 精度
-    dsl             TEXT,                               -- 指标 DSL
-    caliber         TEXT,                               -- 口径说明
     primary_dataset_id BIGINT,                         -- 主数据集 ID
     owner_id        BIGINT,                             -- 负责人 ID
     status          VARCHAR(16)  NOT NULL DEFAULT 'draft',
@@ -57,11 +55,11 @@ COMMENT ON COLUMN metric.name IS '指标名称,全局唯一';
 COMMENT ON COLUMN metric.code IS '指标标识(英文代码)';
 COMMENT ON COLUMN metric.type IS '类型:atomic/derived/window';
 COMMENT ON COLUMN metric.measure_kind IS '度量方式:sum/avg/count/distinct_count/max/min/expr';
-COMMENT ON COLUMN metric.expression IS '计算表达式';
 COMMENT ON COLUMN metric.dsl IS '指标 DSL';
-COMMENT ON COLUMN metric.caliber IS '口径说明';
+COMMENT ON COLUMN metric.filter_condition IS '过滤条件';
+COMMENT ON COLUMN metric.precision IS '精度';
 COMMENT ON COLUMN metric.primary_dataset_id IS '主数据集 ID';
-COMMENT ON COLUMN metric.status IS '状态:draft/published/offline/deprecated';
+COMMENT ON COLUMN metric.status IS '状态:draft/published/offline';
 
 CREATE UNIQUE INDEX uk_metric_name ON metric (name) WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX uk_metric_code ON metric (code) WHERE deleted_at IS NULL AND code IS NOT NULL;
@@ -77,7 +75,6 @@ CREATE TABLE metric_version (
     metric_id  BIGINT       NOT NULL,
     version    INT          NOT NULL,
     dsl        TEXT,
-    caliber    TEXT,
     change_log TEXT,
     created_by BIGINT,
     created_at TIMESTAMPTZ  NOT NULL DEFAULT now(),
@@ -173,7 +170,7 @@ CREATE TABLE dimension (
 COMMENT ON TABLE dimension IS '业务维度(可跨数据集绑定)';
 COMMENT ON COLUMN dimension.name IS '维度名称,全局唯一';
 COMMENT ON COLUMN dimension.semantic_type IS '语义类型:geo/time/category';
-COMMENT ON COLUMN dimension.status IS '状态:draft/published/offline/deprecated';
+COMMENT ON COLUMN dimension.status IS '状态:draft/published/offline';
 
 CREATE UNIQUE INDEX uk_dimension_name ON dimension (name) WHERE deleted_at IS NULL;
 CREATE INDEX idx_dimension_status ON dimension (status) WHERE deleted_at IS NULL;

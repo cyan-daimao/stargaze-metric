@@ -18,9 +18,7 @@ public enum MetricStatus {
     /** 已发布(口径冻结,不可改 DSL) */
     PUBLISHED("published"),
     /** 已下线 */
-    OFFLINE("offline"),
-    /** 已废弃（兼容旧数据） */
-    DEPRECATED("deprecated");
+    OFFLINE("offline");
 
     @EnumValue
     private final String code;

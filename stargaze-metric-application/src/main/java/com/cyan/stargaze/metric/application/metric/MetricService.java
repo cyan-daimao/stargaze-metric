@@ -43,9 +43,6 @@ public interface MetricService {
     /** 下线:published → offline */
     MetricDTO offline(String id);
 
-    /** 废弃:published → deprecated */
-    MetricDTO deprecate(String id);
-
     /** 指标绑定数据集字段 */
     MetricBinding addBinding(MetricBindingCmd cmd);
 

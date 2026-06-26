@@ -48,26 +48,20 @@ public class MetricDTO {
     /** 指标类型 */
     private MetricType type;
 
-    /** 聚合方式（兼容旧字段 measureKind） */
+    /** 聚合方式 */
     private MeasureKind aggregation;
 
     /** 聚合方式（原枚举） */
     private MeasureKind measureKind;
 
-    /** 计算表达式（对应原 DSL） */
-    private String expression;
+    /** 指标 DSL */
+    private String dsl;
 
     /** 过滤条件 */
     private String filterCondition;
 
     /** 小数位 */
     private Integer precision;
-
-    /** 指标 DSL（兼容旧字段） */
-    private String dsl;
-
-    /** 口径说明（兼容旧字段） */
-    private String caliber;
 
     /** 主数据集 ID */
     private String primaryDatasetId;
