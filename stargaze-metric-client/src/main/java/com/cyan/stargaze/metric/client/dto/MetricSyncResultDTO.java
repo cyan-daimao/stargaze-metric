@@ -25,11 +25,23 @@ public class MetricSyncResultDTO {
     /** 成功创建的指标数量 */
     private Integer created;
 
+    /** 成功创建的维度数量 */
+    private Integer dimensionCreated;
+
+    /** 成功创建的维度绑定数量 */
+    private Integer dimensionBindingCreated;
+
     /** 重复跳过的指标 */
     private List<DuplicateMetricDTO> duplicates;
 
+    /** 重复跳过的维度 */
+    private List<DuplicateDimensionDTO> dimensionDuplicates;
+
     /** 创建的指标列表 */
     private List<MetricDTO> metrics;
+
+    /** 创建的维度列表 */
+    private List<DimensionDTO> dimensions;
 
     /**
      * 重复指标项。
@@ -44,6 +56,22 @@ public class MetricSyncResultDTO {
         /** 已存在指标名 */
         private String existingName;
         /** 已存在指标 ID */
+        private String existingId;
+    }
+
+    /**
+     * 重复维度项。
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Accessors(chain = true)
+    public static class DuplicateDimensionDTO {
+        /** 新维度名 */
+        private String newName;
+        /** 已存在维度名 */
+        private String existingName;
+        /** 已存在维度 ID */
         private String existingId;
     }
 }

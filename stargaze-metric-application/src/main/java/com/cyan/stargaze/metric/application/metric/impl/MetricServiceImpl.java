@@ -10,8 +10,6 @@ import com.cyan.stargaze.dataset.client.dto.DatasetFieldDTO;
 import com.cyan.stargaze.dataset.client.dto.ResolveFieldDTO;
 import com.cyan.stargaze.dataset.enums.FieldType;
 import com.cyan.stargaze.metric.application.MetricAppConvert;
-import com.cyan.stargaze.metric.application.dimension.cmd.DimensionBindingCmd;
-import com.cyan.stargaze.metric.application.dimension.cmd.DimensionCmd;
 import com.cyan.stargaze.metric.application.metric.MetricService;
 import com.cyan.stargaze.metric.application.metric.cmd.MetricBindingCmd;
 import com.cyan.stargaze.metric.application.metric.cmd.MetricCmd;
@@ -312,21 +310,90 @@ public class MetricServiceImpl implements MetricService {
         MetricSyncResultDTO result = new MetricSyncResultDTO()
                 .setDatasetId(datasetId)
                 .setCreated(0)
+                .setDimensionCreated(0)
+                .setDimensionBindingCreated(0)
                 .setDuplicates(new ArrayList<>())
-                .setMetrics(new ArrayList<>());
+                .setDimensionDuplicates(new ArrayList<>())
+                .setMetrics(new ArrayList<>())
+                .setDimensions(new ArrayList<>());
 
         var resp = datasetClient.listFields(datasetId);
         Assert.notNull(resp, new SilentException("数据集服务无响应"));
         Assert.isTrue(resp.getCode() == 200 && resp.getData() != null,
                 new SilentException("数据集服务返回错误:[" + resp.getCode() + "] " + resp.getMessage()));
 
+        List<MetricDimensionRefDTO> dimensionRefs = syncDimensions(datasetId, resp.getData(), createdBy, result);
+        syncMetrics(request, resp.getData(), createdBy, result, dimensionRefs);
+        return result;
+    }
+
+    private List<MetricDimensionRefDTO> syncDimensions(String datasetId, List<DatasetFieldDTO> fields, String createdBy, MetricSyncResultDTO result) {
+        List<MetricDimensionRefDTO> refs = new ArrayList<>();
+        for (DatasetFieldDTO field : fields) {
+            if (field.getFieldType() != FieldType.DIMENSION) {
+                continue;
+            }
+            String dimensionName = fieldDisplayName(field);
+            if (dimensionName == null || dimensionName.isBlank()) {
+                continue;
+            }
+            Dimension dimension = dimensionRepository.findByName(dimensionName);
+            if (dimension == null) {
+                try {
+                    dimension = new Dimension()
+                            .setName(dimensionName)
+                            .setCode(toCode(dimensionName))
+                            .setBusinessName(dimensionName)
+                            .setFolder("自动同步")
+                            .setSemanticType(resolveSemanticType(field))
+                            .setCreatedBy(createdBy)
+                            .save(dimensionRepository);
+                    result.setDimensionCreated(result.getDimensionCreated() + 1);
+                    result.getDimensions().add(toDimensionDTO(dimension));
+                } catch (Exception e) {
+                    log.warn("同步维度失败 datasetId={}, field={}", datasetId, field.getOriginName(), e);
+                    continue;
+                }
+            }
+            // 收集维度引用，供后续指标绑定使用（无论新建还是已有维度都需纳入）
+            refs.add(new MetricDimensionRefDTO()
+                    .setDimensionId(dimension.getId())
+                    .setDatasetId(datasetId));
+            DimensionBinding existingBinding = dimensionBindingRepository.findByDimensionAndDataset(dimension.getId(), datasetId);
+            if (existingBinding != null) {
+                result.getDimensionDuplicates().add(new MetricSyncResultDTO.DuplicateDimensionDTO()
+                        .setNewName(dimensionName)
+                        .setExistingName(dimension.getName())
+                        .setExistingId(dimension.getId()));
+                continue;
+            }
+            try {
+                DimensionBinding binding = new DimensionBinding()
+                        .setDimensionId(dimension.getId())
+                        .setDatasetId(datasetId)
+                        .setFieldId(field.getId())
+                        .setCreatedAt(OffsetDateTime.now())
+                        .setUpdatedAt(OffsetDateTime.now());
+                binding.validate();
+                dimensionBindingRepository.save(binding);
+                result.setDimensionBindingCreated(result.getDimensionBindingCreated() + 1);
+            } catch (Exception e) {
+                log.warn("同步维度绑定失败 datasetId={}, dimensionId={}, field={}",
+                        datasetId, dimension.getId(), field.getOriginName(), e);
+            }
+        }
+        return refs;
+    }
+
+    private void syncMetrics(MetricSyncRequestDTO request, List<DatasetFieldDTO> fields, String createdBy,
+                             MetricSyncResultDTO result, List<MetricDimensionRefDTO> dimensionRefs) {
+        String datasetId = request.getDatasetId();
         List<String> targetNames = request.getMetricNames();
-        for (DatasetFieldDTO field : resp.getData()) {
+        for (DatasetFieldDTO field : fields) {
             if (field.getFieldType() != FieldType.MEASURE) {
                 continue;
             }
-            String metricName = field.getAlias() != null && !field.getAlias().isBlank()
-                    ? field.getAlias() : field.getOriginName();
+            String metricName = fieldDisplayName(field);
             if (!CollectionUtils.isEmpty(targetNames) && !targetNames.contains(metricName)) {
                 continue;
             }
@@ -362,6 +429,7 @@ public class MetricServiceImpl implements MetricService {
                         .setPrimaryDatasetId(datasetId)
                         .setPrimaryFieldId(field.getId())
                         .setSecondaryDatasetIds(Collections.emptyList())
+                        .setDimensions(dimensionRefs)
                         .setCreatedBy(createdBy);
                 MetricDTO dto = create(cmd);
                 result.setCreated(result.getCreated() + 1);
@@ -370,7 +438,6 @@ public class MetricServiceImpl implements MetricService {
                 log.warn("同步指标失败 datasetId={}, field={}", datasetId, field.getOriginName(), e);
             }
         }
-        return result;
     }
 
     @Override
@@ -519,6 +586,7 @@ public class MetricServiceImpl implements MetricService {
                 .setId(dimension.getId())
                 .setName(dimension.getName())
                 .setBusinessName(dimension.getBusinessName())
+                .setFolder(dimension.getFolder())
                 .setSemanticType(dimension.getSemanticType())
                 .setDictionaryId(dimension.getDictionaryId())
                 .setFormat(dimension.getFormat())
@@ -526,6 +594,29 @@ public class MetricServiceImpl implements MetricService {
                 .setCreatedBy(dimension.getCreatedBy())
                 .setCreatedAt(dimension.getCreatedAt())
                 .setUpdatedAt(dimension.getUpdatedAt());
+    }
+
+    private String fieldDisplayName(DatasetFieldDTO field) {
+        return field.getAlias() != null && !field.getAlias().isBlank()
+                ? field.getAlias() : field.getOriginName();
+    }
+
+    private SemanticType resolveSemanticType(DatasetFieldDTO field) {
+        String semanticType = field.getSemanticType();
+        if (semanticType != null && !semanticType.isBlank()) {
+            for (SemanticType type : SemanticType.values()) {
+                if (type.getCode().equalsIgnoreCase(semanticType) || type.name().equalsIgnoreCase(semanticType)) {
+                    return type;
+                }
+            }
+        }
+        if (field.getDataType() != null) {
+            String code = field.getDataType().getCode();
+            if ("date".equalsIgnoreCase(code) || "datetime".equalsIgnoreCase(code)) {
+                return SemanticType.TIME;
+            }
+        }
+        return inferSemanticType(field.getOriginName());
     }
 
     private SemanticType inferSemanticType(String fieldName) {
