@@ -751,8 +751,8 @@ public class MetricServiceImpl implements MetricService {
                                                               DatasetFieldDTO field,
                                                               String operator,
                                                               List<MetricDTO> createdMetrics) {
-        String metricCode = generateCode(datasetCode, field.getOriginName());
-        String metricName = dataset.getName() + "." + field.getAlias();
+        String metricCode = generateCode(datasetCode, field.getFieldName());
+        String metricName = field.getDisplayName();
 
         Metric existingName = metricRepository.findByName(metricName);
         if (existingName != null) {
@@ -794,8 +794,8 @@ public class MetricServiceImpl implements MetricService {
                                                                     DatasetFieldDTO field,
                                                                     String operator,
                                                                     List<DimensionDTO> createdDimensions) {
-        String dimCode = generateCode(datasetCode, field.getOriginName());
-        String dimName = field.getAlias();
+        String dimCode = generateCode(datasetCode, field.getFieldName());
+        String dimName = field.getDisplayName();
 
         Dimension existingName = dimensionRepository.findByName(dimName);
         if (existingName != null) {
@@ -859,7 +859,7 @@ public class MetricServiceImpl implements MetricService {
         dsl.put("version", "metric.dsl.v1");
         dsl.put("kind", MetricDslKind.ATOMIC.getCode());
         dsl.put("source", Map.of("type", MetricSourceType.DATASET.getCode(), "datasetCode", datasetCode));
-        dsl.put("expr", Map.of("op", "agg", "func", "SUM", "fieldCode", field.getOriginName()));
+        dsl.put("expr", Map.of("op", "agg", "func", "SUM", "fieldCode", field.getFieldName()));
         return JSON.toJSONString(dsl);
     }
 
@@ -868,7 +868,7 @@ public class MetricServiceImpl implements MetricService {
         dsl.put("version", "dimension.dsl.v1");
         dsl.put("kind", MetricDslKind.FIELD.getCode());
         dsl.put("source", Map.of("type", MetricSourceType.DATASET.getCode(), "datasetCode", datasetCode));
-        dsl.put("expr", Map.of("fieldCode", field.getOriginName()));
+        dsl.put("expr", Map.of("fieldCode", field.getFieldName()));
         return JSON.toJSONString(dsl);
     }
 
