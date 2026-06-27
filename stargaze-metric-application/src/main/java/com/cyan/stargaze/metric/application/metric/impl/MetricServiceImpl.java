@@ -200,12 +200,21 @@ public class MetricServiceImpl implements MetricService {
             // 通过 query 网关执行预览 SQL
             if (metric.getSourceType() == MetricSourceType.DATASET) {
                 try {
+                    String fieldCode = metric.aggregateFieldCode();
+                    String aggFunc = metric.aggregateFunction();
+                    log.info("预览执行 metricCode={}, tableName={}, fieldCode={}, aggFunc={}, dimFields={}",
+                            metricCode, metric.getSourceCode(), fieldCode, aggFunc, dimFields);
                     QueryPreviewRequest qReq = new QueryPreviewRequest()
                             .setMetricCode(metricCode)
                             .setTableName(metric.getSourceCode())
+                            .setFieldCode(StringUtils.hasText(fieldCode) ? fieldCode : "value")
+                            .setAggFunction(StringUtils.hasText(aggFunc) ? aggFunc : "sum")
                             .setDimensionFields(dimFields)
                             .setLimit(5);
                     Response<QueryResult> qResp = queryClient.preview(qReq);
+                    log.info("预览执行结果 metricCode={}, code={}, data={}",
+                            metricCode, qResp != null ? qResp.getCode() : "null",
+                            qResp != null && qResp.getData() != null ? "hasData" : "noData");
                     if (qResp != null && qResp.getCode() == 200 && qResp.getData() != null) {
                         QueryResult data = qResp.getData();
                         response.setColumns(data.getColumns())
@@ -222,7 +231,7 @@ public class MetricServiceImpl implements MetricService {
                         }
                     }
                 } catch (Exception e) {
-                    log.warn("预览 SQL 执行失败 metricCode={}", metricCode, e);
+                    log.error("预览 SQL 执行失败 metricCode={}", metricCode, e);
                 }
             }
             if (response.getValue() == null) {
