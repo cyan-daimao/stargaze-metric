@@ -208,7 +208,7 @@ public class MetricServiceImpl implements MetricService {
         List<SyncDatasetItemDTO> records = data.getData().stream()
                 .map(item -> new SyncDatasetItemDTO()
                         .setId(item.getId())
-                        .setName(item.getName())
+                        .setName(StringUtils.hasText(item.getDisplayName()) ? item.getDisplayName() : item.getName())
                         .setCode(StringUtils.hasText(item.getName()) ? item.getName() : item.getId())
                         .setType(item.getSourceType())
                         .setDatasource(item.getDatasourceName())
@@ -400,7 +400,7 @@ public class MetricServiceImpl implements MetricService {
                 .map(item -> new BindableSourceDTO()
                         .setSourceType(MetricSourceType.DATASET)
                         .setSourceCode(item.getName())
-                        .setSourceName(item.getName())
+                        .setSourceName(StringUtils.hasText(item.getDisplayName()) ? item.getDisplayName() : item.getName())
                         .setExtra(Map.<String, Object>of("status", String.valueOf(item.getStatus()),
                                 "fieldCount", item.getFieldCount())))
                 .collect(Collectors.toList());
@@ -769,14 +769,15 @@ public class MetricServiceImpl implements MetricService {
                     .setExistingId(existingCode.getId());
         }
 
+        String datasetDisplayName = StringUtils.hasText(dataset.getDisplayName()) ? dataset.getDisplayName() : dataset.getName();
         Metric metric = new Metric()
                 .setMetricCode(metricCode)
                 .setName(metricName)
                 .setCode(metricCode)
-                .setDescription("从数据集 " + dataset.getName() + " 同步生成")
+                .setDescription("从数据集 " + datasetDisplayName + " 同步生成")
                 .setSourceType(MetricSourceType.DATASET)
                 .setSourceCode(datasetCode)
-                .setSourceName(dataset.getName())
+                .setSourceName(datasetDisplayName)
                 .setQueryMode(QueryMode.OLAP)
                 .setDslKind(MetricDslKind.ATOMIC)
                 .setDsl(buildMetricDsl(datasetCode, field))
@@ -805,13 +806,14 @@ public class MetricServiceImpl implements MetricService {
                     .setExistingId(existingName.getId());
         }
 
+        String datasetDisplayName = StringUtils.hasText(dataset.getDisplayName()) ? dataset.getDisplayName() : dataset.getName();
         Dimension dimension = new Dimension()
                 .setName(dimName)
                 .setCode(dimCode)
                 .setSemanticType(inferSemanticType(field.getSemanticType()))
                 .setSourceType(MetricSourceType.DATASET)
                 .setSourceCode(datasetCode)
-                .setSourceName(dataset.getName())
+                .setSourceName(datasetDisplayName)
                 .setQueryMode(QueryMode.OLAP)
                 .setDslKind(MetricDslKind.FIELD)
                 .setDsl(buildDimensionDsl(datasetCode, field))
