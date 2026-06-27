@@ -16,17 +16,17 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum MetricSourceType {
     /** 数据集 */
-    DATASET("dataset"),
+    DATASET("DATASET"),
     /** 画像平台-特征 */
-    PORTRAIT_FEATURE("portraitFeature"),
+    PORTRAIT_FEATURE("PORTRAIT_FEATURE"),
     /** 画像平台-标签 */
-    PORTRAIT_TAG("portraitTag"),
+    PORTRAIT_TAG("PORTRAIT_TAG"),
     /** 画像平台-人群 */
-    PORTRAIT_CROWD("portraitCrowd"),
+    PORTRAIT_CROWD("PORTRAIT_CROWD"),
     /** 实时 OLAP 表 */
-    REALTIME_TABLE("realtimeTable"),
+    REALTIME_TABLE("REALTIME_TABLE"),
     /** 受限 HTTP API */
-    HTTP_API("httpApi");
+    HTTP_API("HTTP_API");
 
     @EnumValue
     @JsonValue

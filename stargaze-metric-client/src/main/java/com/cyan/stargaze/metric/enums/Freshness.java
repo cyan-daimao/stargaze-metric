@@ -16,11 +16,11 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum Freshness {
     /** 离线 */
-    OFFLINE("offline"),
+    OFFLINE("OFFLINE"),
     /** 近实时 */
-    NEAR_REALTIME("nearRealtime"),
+    NEAR_REALTIME("NEAR_REALTIME"),
     /** 实时 */
-    REALTIME("realtime");
+    REALTIME("REALTIME");
 
     @EnumValue
     @JsonValue

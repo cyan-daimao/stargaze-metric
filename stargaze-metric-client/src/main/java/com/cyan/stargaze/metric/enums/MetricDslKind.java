@@ -16,13 +16,13 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum MetricDslKind {
     /** 原子指标 */
-    ATOMIC("atomic"),
+    ATOMIC("ATOMIC"),
     /** 派生指标 */
-    DERIVED("derived"),
+    DERIVED("DERIVED"),
     /** 窗口指标 */
-    WINDOW("window"),
+    WINDOW("WINDOW"),
     /** API 指标 */
-    API_METRIC("apiMetric");
+    API_METRIC("API_METRIC");
 
     @EnumValue
     @JsonValue

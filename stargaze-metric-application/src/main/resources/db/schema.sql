@@ -35,14 +35,14 @@ CREATE TABLE metric (
     code            VARCHAR(128)    NOT NULL,              -- 指标标识(英文代码,全局唯一)
     description     TEXT,                                  -- 业务定义/口径说明
     folder          VARCHAR(128),                          -- 所属目录
-    format          VARCHAR(32),                           -- 数据格式:number/percent/currency/int
-    status          VARCHAR(16)     NOT NULL DEFAULT 'draft', -- draft/published/offline/sourceError
-    source_type     VARCHAR(32)     NOT NULL,              -- dataset/portraitFeature/portraitTag/portraitCrowd/realtimeTable/httpApi
+    format          VARCHAR(32),                           -- 数据格式:NUMBER/PERCENT/CURRENCY/INT
+    status          VARCHAR(16)     NOT NULL DEFAULT 'DRAFT', -- DRAFT/PUBLISHED/OFFLINE/SOURCE_ERROR
+    source_type     VARCHAR(32)     NOT NULL,              -- DATASET/PORTRAIT_FEATURE/PORTRAIT_TAG/PORTRAIT_CROWD/REALTIME_TABLE/HTTP_API
     source_code     VARCHAR(128)    NOT NULL,              -- 来源编码(数据集code/特征code/表code/API code)
     source_name     VARCHAR(128),                          -- 来源名称(冗余展示)
-    query_mode      VARCHAR(16)     NOT NULL DEFAULT 'olap', -- olap/pointLookup/filterOnly
-    freshness       VARCHAR(16),                           -- offline/nearRealtime/realtime
-    dsl_kind        VARCHAR(16)     NOT NULL DEFAULT 'atomic', -- atomic/derived/window/apiMetric
+    query_mode      VARCHAR(16)     NOT NULL DEFAULT 'OLAP', -- OLAP/POINT_LOOKUP/FILTER_ONLY
+    freshness       VARCHAR(16),                           -- OFFLINE/NEAR_REALTIME/REALTIME
+    dsl_kind        VARCHAR(16)     NOT NULL DEFAULT 'ATOMIC', -- ATOMIC/DERIVED/WINDOW/API_METRIC
     dsl             TEXT,                                  -- 指标 DSL JSON(metric.dsl.v1)
     source_snapshot TEXT,                                  -- 来源解析快照 JSON
     supports        TEXT,                                  -- 能力声明 JSON(sql/groupBy/filter/orderBy/join/batchLookup)
@@ -82,15 +82,15 @@ CREATE TABLE dimension (
     name            VARCHAR(128)    NOT NULL,              -- 维度名称,全局唯一
     description     TEXT,                                  -- 维度说明
     folder          VARCHAR(128),                          -- 所属目录
-    semantic_type   VARCHAR(16)     NOT NULL DEFAULT 'category', -- geo/time/category
+    semantic_type   VARCHAR(16)     NOT NULL DEFAULT 'CATEGORY', -- GEO/TIME/CATEGORY
     format          TEXT,                                  -- 格式配置 JSON
-    status          VARCHAR(16)     NOT NULL DEFAULT 'draft', -- draft/published/offline
-    source_type     VARCHAR(32)     NOT NULL DEFAULT 'dataset',
+    status          VARCHAR(16)     NOT NULL DEFAULT 'DRAFT', -- DRAFT/PUBLISHED/OFFLINE
+    source_type     VARCHAR(32)     NOT NULL DEFAULT 'DATASET',
     source_code     VARCHAR(128)    NOT NULL,              -- 来源编码
     source_name     VARCHAR(128),                          -- 来源名称
-    query_mode      VARCHAR(16)     NOT NULL DEFAULT 'olap',
-    freshness       VARCHAR(16),                           -- offline/nearRealtime/realtime
-    dsl_kind        VARCHAR(16)     NOT NULL DEFAULT 'field', -- field/time/mapping/portraitTag/apiLookup
+    query_mode      VARCHAR(16)     NOT NULL DEFAULT 'OLAP',
+    freshness       VARCHAR(16),                           -- OFFLINE/NEAR_REALTIME/REALTIME
+    dsl_kind        VARCHAR(16)     NOT NULL DEFAULT 'FIELD', -- FIELD/TIME/MAPPING/PORTRAIT_TAG/API_LOOKUP
     dsl             TEXT,                                  -- 维度 DSL JSON(dimension.dsl.v1)
     source_snapshot TEXT,                                  -- 来源快照 JSON
     supports        TEXT,                                  -- 能力声明 JSON
@@ -123,13 +123,13 @@ CREATE TABLE semantic_asset_binding (
     source_type     VARCHAR(32)     NOT NULL,
     source_code     VARCHAR(128)    NOT NULL,
     source_name     VARCHAR(128),
-    query_mode      VARCHAR(16)     NOT NULL DEFAULT 'olap',
+    query_mode      VARCHAR(16)     NOT NULL DEFAULT 'OLAP',
     freshness       VARCHAR(16),
     source_snapshot TEXT,                                  -- 来源快照 JSON
     field_mapping   TEXT,                                  -- 字段映射 JSON
     dsl_override    TEXT,                                  -- 当前来源下 DSL 覆盖
     is_primary      BOOLEAN         NOT NULL DEFAULT FALSE,
-    status          VARCHAR(16)     NOT NULL DEFAULT 'draft',
+    status          VARCHAR(16)     NOT NULL DEFAULT 'DRAFT',
     created_by      VARCHAR(64),
     updated_by      VARCHAR(64),
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),

@@ -16,13 +16,13 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum MetricStatus {
     /** 草稿(可改 DSL) */
-    DRAFT("draft"),
+    DRAFT("DRAFT"),
     /** 已发布(口径冻结,不可改 DSL) */
-    PUBLISHED("published"),
+    PUBLISHED("PUBLISHED"),
     /** 已下线 */
-    OFFLINE("offline"),
+    OFFLINE("OFFLINE"),
     /** 来源异常 */
-    SOURCE_ERROR("sourceError");
+    SOURCE_ERROR("SOURCE_ERROR");
 
     @EnumValue
     @JsonValue

@@ -16,11 +16,11 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum QueryMode {
     /** 可进入 OLAP 主链路 */
-    OLAP("olap"),
+    OLAP("OLAP"),
     /** 仅点查/小批量补值 */
-    POINT_LOOKUP("pointLookup"),
+    POINT_LOOKUP("POINT_LOOKUP"),
     /** 仅作为过滤范围 */
-    FILTER_ONLY("filterOnly");
+    FILTER_ONLY("FILTER_ONLY");
 
     @EnumValue
     @JsonValue
