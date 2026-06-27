@@ -3,7 +3,11 @@ package com.cyan.stargaze.metric.domain.dimension;
 import com.cyan.arch.common.api.Assert;
 import com.cyan.arch.common.api.SilentException;
 import com.cyan.stargaze.metric.domain.dimension.repository.DimensionRepository;
+import com.cyan.stargaze.metric.enums.Freshness;
+import com.cyan.stargaze.metric.enums.MetricDslKind;
+import com.cyan.stargaze.metric.enums.MetricSourceType;
 import com.cyan.stargaze.metric.enums.MetricStatus;
+import com.cyan.stargaze.metric.enums.QueryMode;
 import com.cyan.stargaze.metric.enums.SemanticType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -30,11 +34,14 @@ public class Dimension {
     /** 维度名(唯一) */
     private String name;
 
-    /** 维度标识（字段名） */
+    /** 维度业务编码(全局唯一) */
     private String code;
 
     /** 业务名 */
     private String businessName;
+
+    /** 描述 */
+    private String description;
 
     /** 所属目录 */
     private String folder;
@@ -48,14 +55,44 @@ public class Dimension {
     /** 格式(jsonb 字符串) */
     private String format;
 
-    /** 负责人 ID */
-    private String ownerId;
-
     /** 状态 */
     private MetricStatus status;
 
-    /** 创建人 */
+    /** 来源类型 */
+    private MetricSourceType sourceType;
+
+    /** 来源编码 */
+    private String sourceCode;
+
+    /** 来源名称 */
+    private String sourceName;
+
+    /** 查询能力 */
+    private QueryMode queryMode;
+
+    /** 数据新鲜度 */
+    private Freshness freshness;
+
+    /** DSL 类型 */
+    private MetricDslKind dslKind;
+
+    /** 维度 DSL JSON */
+    private String dsl;
+
+    /** 来源解析快照 JSON */
+    private String sourceSnapshot;
+
+    /** 来源能力声明 JSON */
+    private String supports;
+
+    /** 负责人 ID */
+    private String ownerId;
+
+    /** 创建人工号 */
     private String createdBy;
+
+    /** 更新人工号 */
+    private String updatedBy;
 
     /** 创建时间 */
     private OffsetDateTime createdAt;

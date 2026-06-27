@@ -25,20 +25,29 @@ public class MetricVersion {
     /** 指标 ID */
     private String metricId;
 
+    /** 指标业务编码 */
+    private String metricCode;
+
     /** 版本号 */
     private Integer version;
 
     /** DSL 快照 */
     private String dsl;
 
+    /** 来源快照 */
+    private String sourceSnapshot;
+
     /** 变更日志 */
     private String changeLog;
 
-    /** 创建人 */
+    /** 创建人工号 */
     private String createdBy;
 
     /** 创建时间 */
     private OffsetDateTime createdAt;
+
+    /** 更新时间 */
+    private OffsetDateTime updatedAt;
 
     /** 逻辑删除时间 */
     private OffsetDateTime deletedAt;

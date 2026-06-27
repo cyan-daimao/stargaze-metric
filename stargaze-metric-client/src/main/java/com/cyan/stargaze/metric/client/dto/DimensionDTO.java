@@ -1,5 +1,6 @@
 package com.cyan.stargaze.metric.client.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.cyan.stargaze.metric.enums.MetricStatus;
 import com.cyan.stargaze.metric.enums.SemanticType;
 import lombok.AllArgsConstructor;
@@ -62,8 +63,10 @@ public class DimensionDTO {
     private String createdBy;
 
     /** 创建时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private OffsetDateTime createdAt;
 
     /** 更新时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private OffsetDateTime updatedAt;
 }

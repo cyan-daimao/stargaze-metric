@@ -1,19 +1,16 @@
 package com.cyan.stargaze.metric.application.metric;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.cyan.stargaze.metric.application.metric.cmd.MetricBindingCmd;
 import com.cyan.stargaze.metric.application.metric.cmd.MetricCmd;
-import com.cyan.stargaze.metric.client.dto.CheckDimensionRequestDTO;
-import com.cyan.stargaze.metric.client.dto.CheckDimensionResultDTO;
+import com.cyan.stargaze.metric.client.dto.BindableSourceDTO;
 import com.cyan.stargaze.metric.client.dto.CheckNameResultDTO;
-import com.cyan.stargaze.metric.client.dto.DatasetListItemDTO;
 import com.cyan.stargaze.metric.client.dto.MetricDTO;
 import com.cyan.stargaze.metric.client.dto.MetricResolveDTO;
-import com.cyan.stargaze.metric.client.dto.MetricSyncRequestDTO;
-import com.cyan.stargaze.metric.client.dto.MetricSyncResultDTO;
 import com.cyan.stargaze.metric.client.dto.PageDTO;
+import com.cyan.stargaze.metric.client.dto.PreviewRequestDTO;
+import com.cyan.stargaze.metric.client.dto.PreviewResponseDTO;
+import com.cyan.stargaze.metric.client.dto.ResolveBatchRequestDTO;
 import com.cyan.stargaze.metric.client.dto.ValidationResultDTO;
-import com.cyan.stargaze.metric.domain.metric.MetricBinding;
+import com.cyan.stargaze.metric.enums.MetricSourceType;
 
 import java.util.List;
 
@@ -27,61 +24,38 @@ public interface MetricService {
 
     MetricDTO create(MetricCmd cmd);
 
-    MetricDTO update(MetricCmd cmd);
+    MetricDTO update(String metricCode, MetricCmd cmd);
 
-    MetricDTO findById(String id);
+    MetricDTO findByCode(String metricCode);
 
     PageDTO<MetricDTO> list(Integer page, Integer size, String keyword, String status, String folder);
 
-    List<MetricDTO> list(boolean publishedOnly);
-
-    void delete(String id);
+    void delete(String metricCode);
 
     /** 发布:draft → published,记版本 */
-    MetricDTO publish(String id);
+    MetricDTO publish(String metricCode);
 
     /** 下线:published → offline */
-    MetricDTO offline(String id);
+    MetricDTO offline(String metricCode);
 
-    /** 指标绑定数据集字段 */
-    MetricBinding addBinding(MetricBindingCmd cmd);
+    /** 单指标预览(不带维度分组) */
+    PreviewResponseDTO preview(String metricCode, PreviewRequestDTO request);
 
-    void removeBinding(String bindingId);
+    /** 查询可绑定来源 */
+    List<BindableSourceDTO> bindableSources(MetricSourceType sourceType);
 
-    List<MetricBinding> listBindings(String metricId);
+    /** 解析指标 AST(供 query 编译期调用) */
+    MetricResolveDTO resolve(String metricCode, String datasetCode);
 
-    /**
-     * 校验指标名称是否可用
-     */
-    CheckNameResultDTO checkName(String name, String excludeId);
+    /** 批量解析指标 AST */
+    List<MetricResolveDTO> resolveBatch(ResolveBatchRequestDTO request);
 
-    /**
-     * 校验指标标识是否可用
-     */
-    CheckNameResultDTO checkCode(String code, String excludeId);
+    /** 校验指标×维度组合合法性 */
+    ValidationResultDTO validate(List<String> metricCodes, List<String> dimCodes);
 
-    /**
-     * 跨数据集维度重复检测
-     */
-    CheckDimensionResultDTO checkDimensions(CheckDimensionRequestDTO request);
+    /** 按名称查重 */
+    CheckNameResultDTO checkName(String name, String excludeMetricCode);
 
-    /**
-     * 获取可同步的数据集列表
-     */
-    PageDTO<DatasetListItemDTO> listSyncDatasets(Integer page, Integer size, String keyword, String type, String datasource);
-
-    /**
-     * 从数据集一键同步度量字段为指标
-     */
-    MetricSyncResultDTO syncFromDataset(MetricSyncRequestDTO request, String createdBy);
-
-    /**
-     * 解析指标到指定数据集(纯函数,query 调用)
-     */
-    MetricResolveDTO resolve(String metricId, String datasetId);
-
-    /**
-     * 校验指标×维度组合
-     */
-    ValidationResultDTO validate(List<String> metricIds, List<String> dimensionIds);
+    /** 按标识查重 */
+    CheckNameResultDTO checkCode(String code, String excludeMetricCode);
 }

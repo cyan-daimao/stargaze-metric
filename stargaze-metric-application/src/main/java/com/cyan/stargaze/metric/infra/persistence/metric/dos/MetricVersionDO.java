@@ -23,14 +23,18 @@ public class MetricVersionDO {
     private Long id;
     @TableField("metric_id")
     private Long metricId;
+    @TableField("metric_code")
+    private String metricCode;
     @TableField("version")
     private Integer version;
     @TableField("dsl")
     private String dsl;
+    @TableField("source_snapshot")
+    private String sourceSnapshot;
     @TableField("change_log")
     private String changeLog;
     @TableField("created_by")
-    private Long createdBy;
+    private String createdBy;
     @TableField("created_at")
     private OffsetDateTime createdAt;
     @TableField("updated_at")

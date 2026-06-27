@@ -7,35 +7,33 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
- * 指标/维度生命周期状态。
+ * 来源查询能力模式。
  *
  * @author cy.Y
  * @since 1.0.0
  */
 @Getter
 @AllArgsConstructor
-public enum MetricStatus {
-    /** 草稿(可改 DSL) */
-    DRAFT("draft"),
-    /** 已发布(口径冻结,不可改 DSL) */
-    PUBLISHED("published"),
-    /** 已下线 */
-    OFFLINE("offline"),
-    /** 来源异常 */
-    SOURCE_ERROR("sourceError");
+public enum QueryMode {
+    /** 可进入 OLAP 主链路 */
+    OLAP("olap"),
+    /** 仅点查/小批量补值 */
+    POINT_LOOKUP("pointLookup"),
+    /** 仅作为过滤范围 */
+    FILTER_ONLY("filterOnly");
 
     @EnumValue
     @JsonValue
     private final String code;
 
     @JsonCreator
-    public static MetricStatus fromCode(String code) {
+    public static QueryMode fromCode(String code) {
         if (code == null || code.isBlank()) {
             return null;
         }
-        for (MetricStatus status : values()) {
-            if (status.code.equalsIgnoreCase(code)) {
-                return status;
+        for (QueryMode value : values()) {
+            if (value.code.equalsIgnoreCase(code)) {
+                return value;
             }
         }
         return null;

@@ -5,10 +5,12 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.cyan.stargaze.metric.enums.MeasureKind;
+import com.cyan.stargaze.metric.enums.Freshness;
+import com.cyan.stargaze.metric.enums.MetricDslKind;
 import com.cyan.stargaze.metric.enums.MetricFormat;
+import com.cyan.stargaze.metric.enums.MetricSourceType;
 import com.cyan.stargaze.metric.enums.MetricStatus;
-import com.cyan.stargaze.metric.enums.MetricType;
+import com.cyan.stargaze.metric.enums.QueryMode;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -25,40 +27,46 @@ import java.time.OffsetDateTime;
 public class MetricDO {
     @TableId(value = "id", type = IdType.ASSIGN_ID)
     private Long id;
+    @TableField("metric_code")
+    private String metricCode;
     @TableField("name")
     private String name;
     @TableField("code")
     private String code;
-    @TableField("business_name")
-    private String businessName;
     @TableField("description")
     private String description;
     @TableField("folder")
     private String folder;
     @TableField("format")
     private MetricFormat format;
-    @TableField("type")
-    private MetricType type;
-    @TableField("measure_kind")
-    private MeasureKind measureKind;
-    @TableField("dsl")
-    private String dsl;
-    @TableField("filter_condition")
-    private String filterCondition;
-    @TableField("precision")
-    private Integer precision;
-    @TableField("primary_dataset_id")
-    private Long primaryDatasetId;
-    @TableField("owner_id")
-    private Long ownerId;
     @TableField("status")
     private MetricStatus status;
-    @TableField("version")
-    private Integer version;
+    @TableField("source_type")
+    private MetricSourceType sourceType;
+    @TableField("source_code")
+    private String sourceCode;
+    @TableField("source_name")
+    private String sourceName;
+    @TableField("query_mode")
+    private QueryMode queryMode;
+    @TableField("freshness")
+    private Freshness freshness;
+    @TableField("dsl_kind")
+    private MetricDslKind dslKind;
+    @TableField("dsl")
+    private String dsl;
+    @TableField("source_snapshot")
+    private String sourceSnapshot;
+    @TableField("supports")
+    private String supports;
+    @TableField("precision")
+    private Integer precision;
+    @TableField("owner_id")
+    private Long ownerId;
     @TableField("created_by")
-    private Long createdBy;
+    private String createdBy;
     @TableField("updated_by")
-    private Long updatedBy;
+    private String updatedBy;
     @TableField("created_at")
     private OffsetDateTime createdAt;
     @TableField("updated_at")

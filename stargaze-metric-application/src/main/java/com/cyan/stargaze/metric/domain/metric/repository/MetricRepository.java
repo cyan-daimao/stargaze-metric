@@ -7,7 +7,7 @@ import com.cyan.stargaze.metric.enums.MetricStatus;
 import java.util.List;
 
 /**
- * 指标仓储接口(聚合 MetricBinding)。
+ * 指标仓储接口。
  *
  * @author cy.Y
  * @since 1.0.0
@@ -15,6 +15,8 @@ import java.util.List;
 public interface MetricRepository {
 
     Metric findById(String id);
+
+    Metric findByMetricCode(String metricCode);
 
     Metric findByName(String name);
 

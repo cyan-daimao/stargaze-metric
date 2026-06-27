@@ -1,4 +1,4 @@
-package com.cyan.stargaze.metric.client.dto;
+package com.cyan.stargaze.metric.adapter.metric.http.dto;
 
 import com.cyan.stargaze.metric.enums.Freshness;
 import com.cyan.stargaze.metric.enums.MetricDslKind;
@@ -14,9 +14,10 @@ import lombok.experimental.Accessors;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
- * 指标 DTO(对外契约 + 前端)。
+ * 指标详情。
  *
  * @author cy.Y
  * @since 1.0.0
@@ -25,21 +26,15 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Accessors(chain = true)
-public class MetricDTO {
+public class MetricDetailDTO {
 
-    /** 主键 */
-    private String id;
-
-    /** 指标业务编码(全局唯一) */
+    /** 指标业务编码 */
     private String metricCode;
 
-    /** 指标名称(全局唯一) */
-    private String name;
+    /** 指标名称 */
+    private String metricName;
 
-    /** 指标标识(英文代码,全局唯一) */
-    private String code;
-
-    /** 业务定义/口径说明 */
+    /** 业务描述 */
     private String description;
 
     /** 所属目录 */
@@ -47,6 +42,9 @@ public class MetricDTO {
 
     /** 数据格式 */
     private MetricFormat format;
+
+    /** 状态 */
+    private MetricStatus status;
 
     /** 来源类型 */
     private MetricSourceType sourceType;
@@ -57,14 +55,8 @@ public class MetricDTO {
     /** 来源名称 */
     private String sourceName;
 
-    /** 来源类型展示标签,如"数据集"、"画像平台" */
+    /** 来源类型展示标签 */
     private String sourceTypeLabel;
-
-    /** 计算逻辑摘要,如"SUM(order_amount)"、"IMPORT portraitFeature" */
-    private String logicSummary;
-
-    /** 可关联维度名称列表 */
-    private List<String> relatedDimensions;
 
     /** 查询能力 */
     private QueryMode queryMode;
@@ -75,8 +67,11 @@ public class MetricDTO {
     /** DSL 类型 */
     private MetricDslKind dslKind;
 
-    /** 指标 DSL JSON */
-    private String dsl;
+    /** 指标 DSL AST(已解析为对象) */
+    private Map<String, Object> dsl;
+
+    /** 来源绑定信息 */
+    private MetricSourceBindingDTO sourceBinding;
 
     /** 来源解析快照 JSON */
     private String sourceSnapshot;
@@ -84,20 +79,20 @@ public class MetricDTO {
     /** 来源能力声明 JSON */
     private String supports;
 
-    /** SQL 预览(仅 SQL 来源) */
-    private String sqlPreview;
-
-    /** API 点查计划(仅 httpApi 来源) */
-    private String apiLookupPlan;
-
     /** 小数位精度 */
     private Integer precision;
 
-    /** 状态 */
-    private MetricStatus status;
+    /** 可关联维度 */
+    private List<String> relatedDimensions;
 
-    /** 负责人 ID */
-    private String ownerId;
+    /** 计算逻辑摘要 */
+    private String logicSummary;
+
+    /** SQL 预览 */
+    private String sqlPreview;
+
+    /** API 点查计划(已解析为对象) */
+    private Map<String, Object> apiLookupPlan;
 
     /** 创建人工号 */
     private String createdBy;

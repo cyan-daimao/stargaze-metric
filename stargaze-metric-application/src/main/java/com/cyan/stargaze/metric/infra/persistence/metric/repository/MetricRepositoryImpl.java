@@ -32,6 +32,13 @@ public class MetricRepositoryImpl implements MetricRepository {
     }
 
     @Override
+    public Metric findByMetricCode(String metricCode) {
+        MetricDO doObj = mapper.selectOne(new LambdaQueryWrapper<MetricDO>()
+                .eq(MetricDO::getMetricCode, metricCode));
+        return doObj == null ? null : convert.toMetric(doObj);
+    }
+
+    @Override
     public Metric findByName(String name) {
         MetricDO doObj = mapper.selectOne(new LambdaQueryWrapper<MetricDO>()
                 .eq(MetricDO::getName, name));
@@ -59,7 +66,9 @@ public class MetricRepositoryImpl implements MetricRepository {
                 .and(keyword != null && !keyword.isBlank(), w -> w
                         .like(MetricDO::getName, keyword)
                         .or()
-                        .like(MetricDO::getCode, keyword))
+                        .like(MetricDO::getCode, keyword)
+                        .or()
+                        .like(MetricDO::getMetricCode, keyword))
                 .eq(status != null, MetricDO::getStatus, status)
                 .eq(folder != null && !folder.isBlank(), MetricDO::getFolder, folder)
                 .orderByDesc(MetricDO::getCreatedAt);

@@ -28,7 +28,7 @@ public class MetricDimensionBindingRepositoryImpl implements MetricDimensionBind
     public List<MetricDimensionBinding> listByMetric(String metricId) {
         return mapper.selectList(new LambdaQueryWrapper<MetricDimensionBindingDO>()
                         .eq(MetricDimensionBindingDO::getMetricId, IdUtil.toLong(metricId))
-                        .orderByAsc(MetricDimensionBindingDO::getDimensionName))
+                        .orderByAsc(MetricDimensionBindingDO::getDimensionCode))
                 .stream().map(convert::toMetricDimensionBinding).toList();
     }
 

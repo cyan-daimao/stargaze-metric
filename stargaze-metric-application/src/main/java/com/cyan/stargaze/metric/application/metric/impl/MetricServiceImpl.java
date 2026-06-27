@@ -1,66 +1,63 @@
 package com.cyan.stargaze.metric.application.metric.impl;
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cyan.arch.common.api.Assert;
 import com.cyan.arch.common.api.Response;
 import com.cyan.arch.common.api.SilentException;
 import com.cyan.stargaze.dataset.client.DatasetClient;
-import com.cyan.stargaze.dataset.client.dto.DatasetFieldDTO;
-import com.cyan.stargaze.dataset.client.dto.ResolveFieldDTO;
-import com.cyan.stargaze.dataset.enums.FieldType;
+import com.cyan.stargaze.dataset.client.dto.DatasetListItemDTO;
+import com.cyan.stargaze.metric.adapter.MetricAdapterConvert;
 import com.cyan.stargaze.metric.application.MetricAppConvert;
 import com.cyan.stargaze.metric.application.metric.MetricService;
-import com.cyan.stargaze.metric.application.metric.cmd.MetricBindingCmd;
 import com.cyan.stargaze.metric.application.metric.cmd.MetricCmd;
-import com.cyan.stargaze.metric.client.dto.CheckDimensionRequestDTO;
-import com.cyan.stargaze.metric.client.dto.CheckDimensionResultDTO;
+import com.cyan.stargaze.metric.application.metric.cmd.MetricDimensionRef;
+import com.cyan.stargaze.metric.client.dto.BindableSourceDTO;
 import com.cyan.stargaze.metric.client.dto.CheckNameResultDTO;
-import com.cyan.stargaze.metric.client.dto.DatasetListItemDTO;
-import com.cyan.stargaze.metric.client.dto.DimensionDTO;
-import com.cyan.stargaze.metric.client.dto.FieldRefDTO;
 import com.cyan.stargaze.metric.client.dto.MetricDTO;
-import com.cyan.stargaze.metric.client.dto.MetricDimensionRefDTO;
 import com.cyan.stargaze.metric.client.dto.MetricResolveDTO;
-import com.cyan.stargaze.metric.client.dto.MetricSyncRequestDTO;
-import com.cyan.stargaze.metric.client.dto.MetricSyncResultDTO;
 import com.cyan.stargaze.metric.client.dto.PageDTO;
+import com.cyan.stargaze.metric.client.dto.PreviewRequestDTO;
+import com.cyan.stargaze.metric.client.dto.PreviewResponseDTO;
+import com.cyan.stargaze.metric.client.dto.ResolveBatchRequestDTO;
 import com.cyan.stargaze.metric.client.dto.ValidationResultDTO;
-import com.cyan.stargaze.metric.domain.dimension.Dimension;
-import com.cyan.stargaze.metric.domain.dimension.DimensionBinding;
-import com.cyan.stargaze.metric.domain.dimension.repository.DimensionBindingRepository;
-import com.cyan.stargaze.metric.domain.dimension.repository.DimensionRepository;
 import com.cyan.stargaze.metric.domain.metric.Metric;
-import com.cyan.stargaze.metric.domain.metric.MetricBinding;
 import com.cyan.stargaze.metric.domain.metric.MetricDimensionBinding;
 import com.cyan.stargaze.metric.domain.metric.MetricVersion;
-import com.cyan.stargaze.metric.domain.metric.repository.MetricBindingRepository;
-import com.cyan.stargaze.metric.domain.metric.repository.MetricCompatRepository;
 import com.cyan.stargaze.metric.domain.metric.repository.MetricDimensionBindingRepository;
 import com.cyan.stargaze.metric.domain.metric.repository.MetricRepository;
 import com.cyan.stargaze.metric.domain.metric.repository.MetricVersionRepository;
-import com.cyan.stargaze.metric.enums.MeasureKind;
+import com.cyan.stargaze.metric.enums.Freshness;
+import com.cyan.stargaze.metric.enums.MetricDslKind;
 import com.cyan.stargaze.metric.enums.MetricFormat;
+import com.cyan.stargaze.metric.enums.MetricSourceType;
 import com.cyan.stargaze.metric.enums.MetricStatus;
-import com.cyan.stargaze.metric.enums.MetricType;
-import com.cyan.stargaze.metric.enums.SemanticType;
+import com.cyan.stargaze.metric.enums.QueryMode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
- * 指标应用服务实现。
+ * 指标应用服务实现(语义资产重构后)。
  *
  * @author cy.Y
  * @since 1.0.0
@@ -71,43 +68,42 @@ import java.util.Set;
 public class MetricServiceImpl implements MetricService {
 
     private final MetricRepository metricRepository;
-    private final MetricBindingRepository metricBindingRepository;
     private final MetricDimensionBindingRepository metricDimensionBindingRepository;
     private final MetricVersionRepository metricVersionRepository;
-    private final MetricCompatRepository metricCompatRepository;
-    private final DimensionRepository dimensionRepository;
-    private final DimensionBindingRepository dimensionBindingRepository;
-    private final MetricAppConvert convert;
+    private final MetricAppConvert appConvert;
+    private final MetricAdapterConvert adapterConvert;
     private final DatasetClient datasetClient;
 
     @Override
     @Transactional
     public MetricDTO create(MetricCmd cmd) {
-        Metric metric = convert.toMetric(cmd);
+        Metric metric = appConvert.toMetric(cmd);
+        metric.setCreatedBy(cmd.getCreatedBy());
+        metric.setUpdatedBy(cmd.getUpdatedBy());
         metric = metric.save(metricRepository);
-        saveBindings(metric.getId(), cmd);
-        saveDimensionBindings(metric.getId(), cmd);
-        return enrichDTO(toDTO(metric), metric.getId());
+        saveDimensionBindings(metric, cmd.getRelatedDimensions());
+        return enrichDTO(adapterConvert.toMetricDTO(metric));
     }
 
     @Override
     @Transactional
-    public MetricDTO update(MetricCmd cmd) {
-        Metric existing = metricRepository.findById(cmd.getId());
-        Assert.notNull(existing, new SilentException("指标不存在"));
-        Metric metric = convert.toMetric(cmd);
+    public MetricDTO update(String metricCode, MetricCmd cmd) {
+        Metric existing = loadMetric(metricCode);
+        Metric metric = appConvert.toMetric(cmd);
         metric.setId(existing.getId());
         metric.setStatus(existing.getStatus());
-        metric.setVersion(existing.getVersion());
+        metric.setCreatedBy(existing.getCreatedBy());
+        metric.setCreatedAt(existing.getCreatedAt());
+        metric.setUpdatedBy(cmd.getUpdatedBy());
         metric = metric.update(metricRepository);
-        saveBindings(metric.getId(), cmd);
-        saveDimensionBindings(metric.getId(), cmd);
-        return enrichDTO(toDTO(metric), metric.getId());
+        saveDimensionBindings(metric, cmd.getRelatedDimensions());
+        return enrichDTO(adapterConvert.toMetricDTO(metric));
     }
 
     @Override
-    public MetricDTO findById(String id) {
-        return enrichDTO(toDTO(loadMetric(id)), id);
+    public MetricDTO findByCode(String metricCode) {
+        Metric metric = loadMetric(metricCode);
+        return enrichDetail(adapterConvert.toMetricDTO(metric));
     }
 
     @Override
@@ -117,7 +113,7 @@ public class MetricServiceImpl implements MetricService {
         MetricStatus metricStatus = MetricStatus.fromCode(status);
         IPage<Metric> result = metricRepository.page(new Page<>(p, s), keyword, metricStatus, folder);
         List<MetricDTO> records = result.getRecords().stream()
-                .map(m -> enrichDTO(toDTO(m), m.getId()))
+                .map(m -> enrichDTO(adapterConvert.toMetricDTO(m)))
                 .toList();
         return new PageDTO<MetricDTO>()
                 .setData(records)
@@ -127,529 +123,513 @@ public class MetricServiceImpl implements MetricService {
     }
 
     @Override
-    public List<MetricDTO> list(boolean publishedOnly) {
-        MetricStatus status = publishedOnly ? MetricStatus.PUBLISHED : null;
-        return metricRepository.list(status).stream()
-                .map(m -> enrichDTO(toDTO(m), m.getId())).toList();
-    }
-
-    @Override
     @Transactional
-    public void delete(String id) {
-        Metric metric = loadMetric(id);
+    public void delete(String metricCode) {
+        Metric metric = loadMetric(metricCode);
         metric.delete(metricRepository);
-        metricBindingRepository.deleteByMetric(id);
-        metricDimensionBindingRepository.deleteByMetric(id);
+        metricDimensionBindingRepository.deleteByMetric(metric.getId());
     }
 
     @Override
     @Transactional
-    public MetricDTO publish(String id) {
-        Metric metric = loadMetric(id);
+    public MetricDTO publish(String metricCode) {
+        Metric metric = loadMetric(metricCode);
         metric = metric.publish(metricRepository);
-        MetricVersion version = new MetricVersion()
-                .setMetricId(metric.getId())
-                .setVersion(metric.getVersion())
-                .setDsl(metric.getDsl())
-                .setChangeLog("发布")
-                .setCreatedBy(metric.getUpdatedBy());
-        metricVersionRepository.save(version);
-        log.info("指标发布 metricId={}, version={}", id, metric.getVersion());
-        return enrichDTO(toDTO(metric), id);
+        saveVersion(metric, "发布");
+        log.info("指标发布 metricCode={}, version={}", metricCode, metric.getMetricCode());
+        return enrichDTO(adapterConvert.toMetricDTO(metric));
     }
 
     @Override
     @Transactional
-    public MetricDTO offline(String id) {
-        Metric metric = loadMetric(id);
+    public MetricDTO offline(String metricCode) {
+        Metric metric = loadMetric(metricCode);
         metric = metric.offline(metricRepository);
-        return enrichDTO(toDTO(metric), id);
+        return enrichDTO(adapterConvert.toMetricDTO(metric));
     }
 
     @Override
-    @Transactional
-    public MetricBinding addBinding(MetricBindingCmd cmd) {
-        MetricBinding binding = convert.toMetricBinding(cmd);
-        binding.validate();
-        Assert.notNull(datasetClient, new SilentException("数据集客户端未初始化"));
-        var resp = datasetClient.resolveField(cmd.getDatasetId(), cmd.getFieldId());
-        Assert.notNull(resp, new SilentException("字段校验失败:数据集服务无响应"));
-        Assert.isTrue(resp.getCode() == 200 && resp.getData() != null,
-                new SilentException("字段校验失败:[" + resp.getCode() + "] " + resp.getMessage()));
-        return metricBindingRepository.save(binding);
+    public PreviewResponseDTO preview(String metricCode, PreviewRequestDTO request) {
+        Metric metric = loadMetric(metricCode);
+        Assert.isTrue(metric.isAvailable(), new SilentException("指标当前状态不可预览"));
+        long start = System.currentTimeMillis();
+        PreviewResponseDTO response = new PreviewResponseDTO()
+                .setMetricCode(metric.getMetricCode())
+                .setMetricName(metric.getName())
+                .setValue(0.0)
+                .setElapsedMs(System.currentTimeMillis() - start);
+        if (metric.getSourceType() == MetricSourceType.HTTP_API) {
+            response.setPlanType("ApiLookupPlan")
+                    .setApiLookupPlan(buildApiLookupPlan(metric))
+                    .setFormattedValue(formatValue(0.0, metric.getFormat(), metric.getPrecision()));
+        } else {
+            response.setPlanType("SqlPlan")
+                    .setSql(buildPreviewSql(metric, request))
+                    .setFormattedValue(formatValue(0.0, metric.getFormat(), metric.getPrecision()));
+        }
+        return response;
     }
 
     @Override
-    @Transactional
-    public void removeBinding(String bindingId) {
-        metricBindingRepository.deleteById(bindingId);
+    public List<BindableSourceDTO> bindableSources(MetricSourceType sourceType) {
+        if (sourceType == null) {
+            return Collections.emptyList();
+        }
+        if (sourceType == MetricSourceType.DATASET) {
+            return listBindableDatasets();
+        }
+        return defaultBindableSources(sourceType);
     }
 
     @Override
-    public List<MetricBinding> listBindings(String metricId) {
-        return metricBindingRepository.listByMetric(metricId);
-    }
-
-    @Override
-    public CheckNameResultDTO checkName(String name, String excludeId) {
-        if (name == null || name.isBlank()) {
-            return new CheckNameResultDTO().setAvailable(false).setMessage("指标名称不能为空");
-        }
-        Metric existing = metricRepository.findByName(name.trim());
-        if (existing != null && (excludeId == null || !excludeId.equals(existing.getId()))) {
-            return new CheckNameResultDTO()
-                    .setAvailable(false)
-                    .setMessage("该指标名称已存在，建议修改以避免混淆");
-        }
-        return new CheckNameResultDTO().setAvailable(true);
-    }
-
-    @Override
-    public CheckNameResultDTO checkCode(String code, String excludeId) {
-        if (code == null || code.isBlank()) {
-            return new CheckNameResultDTO().setAvailable(false).setMessage("指标标识不能为空");
-        }
-        Metric existing = metricRepository.findByCode(code.trim());
-        if (existing != null && (excludeId == null || !excludeId.equals(existing.getId()))) {
-            return new CheckNameResultDTO()
-                    .setAvailable(false)
-                    .setMessage("该指标标识已存在，建议修改以避免混淆");
-        }
-        return new CheckNameResultDTO().setAvailable(true);
-    }
-
-    @Override
-    public CheckDimensionResultDTO checkDimensions(CheckDimensionRequestDTO request) {
-        List<String> datasetIds = new ArrayList<>();
-        if (request.getPrimaryDatasetId() != null) {
-            datasetIds.add(request.getPrimaryDatasetId());
-        }
-        if (!CollectionUtils.isEmpty(request.getSecondaryDatasetIds())) {
-            datasetIds.addAll(request.getSecondaryDatasetIds());
-        }
-        if (datasetIds.isEmpty()) {
-            return new CheckDimensionResultDTO().setDuplicates(Collections.emptyList());
-        }
-
-        Map<String, Set<String>> nameToDatasets = new HashMap<>();
-        Map<String, String> datasetNameMap = new HashMap<>();
-        for (String datasetId : datasetIds) {
-            var resp = datasetClient.listFields(datasetId);
-            if (resp == null || resp.getCode() != 200 || resp.getData() == null) {
-                log.warn("维度查重跳过不可用数据集 datasetId={}", datasetId);
-                continue;
-            }
-            String datasetName = resp.getData().isEmpty() ? datasetId : datasetId;
-            datasetNameMap.put(datasetId, datasetName);
-            for (DatasetFieldDTO field : resp.getData()) {
-                if (field.getFieldType() != FieldType.DIMENSION) {
-                    continue;
-                }
-                String dimName = field.getAlias() != null && !field.getAlias().isBlank()
-                        ? field.getAlias() : field.getOriginName();
-                if (dimName == null) {
-                    continue;
-                }
-                nameToDatasets.computeIfAbsent(dimName, k -> new HashSet<>()).add(datasetId);
-            }
-        }
-
-        List<CheckDimensionResultDTO.DuplicateDimensionDTO> duplicates = new ArrayList<>();
-        nameToDatasets.forEach((dimName, ids) -> {
-            if (ids.size() > 1) {
-                List<CheckDimensionResultDTO.DuplicateDimensionDTO.DatasetDTO> datasets = ids.stream()
-                        .map(id -> new CheckDimensionResultDTO.DuplicateDimensionDTO.DatasetDTO()
-                                .setId(id)
-                                .setName(datasetNameMap.getOrDefault(id, id)))
-                        .toList();
-                duplicates.add(new CheckDimensionResultDTO.DuplicateDimensionDTO()
-                        .setDimensionName(dimName)
-                        .setDatasets(datasets));
-            }
-        });
-        return new CheckDimensionResultDTO().setDuplicates(duplicates);
-    }
-
-    @Override
-    public PageDTO<DatasetListItemDTO> listSyncDatasets(Integer page, Integer size, String keyword, String type, String datasource) {
-        int p = page == null || page < 1 ? 1 : page;
-        int s = size == null || size < 1 ? 20 : size;
-        Response<com.cyan.arch.common.api.Page<com.cyan.stargaze.dataset.client.dto.DatasetListItemDTO>> resp =
-                datasetClient.page(p, s, keyword, type, null);
-        Assert.notNull(resp, new SilentException("数据集服务无响应"));
-        Assert.isTrue(resp.getCode() == 200 && resp.getData() != null,
-                new SilentException("数据集服务返回错误:[" + resp.getCode() + "] " + resp.getMessage()));
-
-        List<com.cyan.stargaze.dataset.client.dto.DatasetListItemDTO> sourceList = resp.getData().getData();
-        List<DatasetListItemDTO> list = sourceList.stream()
-                .map(item -> new DatasetListItemDTO()
-                        .setId(item.getId())
-                        .setName(item.getName())
-                        .setCode(item.getName())
-                        .setType(item.getSourceType())
-                        .setDatasource(item.getDatasourceName())
-                        .setSchema("")
-                        .setFields(item.getFieldCount())
-                        .setRows("")
-                        .setStatus(item.getStatus())
-                        .setMetricCount(item.getMeasureCount())
-                        .setDimensionCount(item.getDimensionCount())
-                        .setUpdateTime(item.getUpdatedAt() == null ? null : item.getUpdatedAt().toString()))
-                .toList();
-        return new PageDTO<DatasetListItemDTO>()
-                .setData(list)
-                .setTotal(resp.getData().getTotal())
-                .setPage(resp.getData().getCurrent())
-                .setSize(resp.getData().getSize());
-    }
-
-    @Override
-    @Transactional
-    public MetricSyncResultDTO syncFromDataset(MetricSyncRequestDTO request, String createdBy) {
-        String datasetId = request.getDatasetId();
-        MetricSyncResultDTO result = new MetricSyncResultDTO()
-                .setDatasetId(datasetId)
-                .setCreated(0)
-                .setDimensionCreated(0)
-                .setDimensionBindingCreated(0)
-                .setDuplicates(new ArrayList<>())
-                .setDimensionDuplicates(new ArrayList<>())
-                .setMetrics(new ArrayList<>())
-                .setDimensions(new ArrayList<>());
-
-        var resp = datasetClient.listFields(datasetId);
-        Assert.notNull(resp, new SilentException("数据集服务无响应"));
-        Assert.isTrue(resp.getCode() == 200 && resp.getData() != null,
-                new SilentException("数据集服务返回错误:[" + resp.getCode() + "] " + resp.getMessage()));
-
-        List<MetricDimensionRefDTO> dimensionRefs = syncDimensions(datasetId, resp.getData(), createdBy, result);
-        syncMetrics(request, resp.getData(), createdBy, result, dimensionRefs);
-        return result;
-    }
-
-    private List<MetricDimensionRefDTO> syncDimensions(String datasetId, List<DatasetFieldDTO> fields, String createdBy, MetricSyncResultDTO result) {
-        List<MetricDimensionRefDTO> refs = new ArrayList<>();
-        for (DatasetFieldDTO field : fields) {
-            if (field.getFieldType() != FieldType.DIMENSION) {
-                continue;
-            }
-            String dimensionName = fieldDisplayName(field);
-            if (dimensionName == null || dimensionName.isBlank()) {
-                continue;
-            }
-            Dimension dimension = dimensionRepository.findByName(dimensionName);
-            if (dimension == null) {
-                try {
-                    dimension = new Dimension()
-                            .setName(dimensionName)
-                            .setCode(toCode(dimensionName))
-                            .setBusinessName(dimensionName)
-                            .setFolder("自动同步")
-                            .setSemanticType(resolveSemanticType(field))
-                            .setCreatedBy(createdBy)
-                            .save(dimensionRepository);
-                    result.setDimensionCreated(result.getDimensionCreated() + 1);
-                    result.getDimensions().add(toDimensionDTO(dimension));
-                } catch (Exception e) {
-                    log.warn("同步维度失败 datasetId={}, field={}", datasetId, field.getOriginName(), e);
-                    continue;
-                }
-            }
-            // 收集维度引用，供后续指标绑定使用（无论新建还是已有维度都需纳入）
-            refs.add(new MetricDimensionRefDTO()
-                    .setDimensionId(dimension.getId())
-                    .setDatasetId(datasetId));
-            DimensionBinding existingBinding = dimensionBindingRepository.findByDimensionAndDataset(dimension.getId(), datasetId);
-            if (existingBinding != null) {
-                result.getDimensionDuplicates().add(new MetricSyncResultDTO.DuplicateDimensionDTO()
-                        .setNewName(dimensionName)
-                        .setExistingName(dimension.getName())
-                        .setExistingId(dimension.getId()));
-                continue;
-            }
-            try {
-                DimensionBinding binding = new DimensionBinding()
-                        .setDimensionId(dimension.getId())
-                        .setDatasetId(datasetId)
-                        .setFieldId(field.getId())
-                        .setCreatedAt(OffsetDateTime.now())
-                        .setUpdatedAt(OffsetDateTime.now());
-                binding.validate();
-                dimensionBindingRepository.save(binding);
-                result.setDimensionBindingCreated(result.getDimensionBindingCreated() + 1);
-            } catch (Exception e) {
-                log.warn("同步维度绑定失败 datasetId={}, dimensionId={}, field={}",
-                        datasetId, dimension.getId(), field.getOriginName(), e);
-            }
-        }
-        return refs;
-    }
-
-    private void syncMetrics(MetricSyncRequestDTO request, List<DatasetFieldDTO> fields, String createdBy,
-                             MetricSyncResultDTO result, List<MetricDimensionRefDTO> dimensionRefs) {
-        String datasetId = request.getDatasetId();
-        List<String> targetNames = request.getMetricNames();
-        for (DatasetFieldDTO field : fields) {
-            if (field.getFieldType() != FieldType.MEASURE) {
-                continue;
-            }
-            String metricName = fieldDisplayName(field);
-            if (!CollectionUtils.isEmpty(targetNames) && !targetNames.contains(metricName)) {
-                continue;
-            }
-            String code = toCode(metricName);
-            String dsl = "SUM([" + field.getOriginName() + "])";
-            Metric existingByName = metricRepository.findByName(metricName);
-            Metric existingByCode = metricRepository.findByCode(code);
-            if (existingByName != null) {
-                result.getDuplicates().add(new MetricSyncResultDTO.DuplicateMetricDTO()
-                        .setNewName(metricName)
-                        .setExistingName(existingByName.getName())
-                        .setExistingId(existingByName.getId()));
-                continue;
-            }
-            if (existingByCode != null) {
-                result.getDuplicates().add(new MetricSyncResultDTO.DuplicateMetricDTO()
-                        .setNewName(metricName)
-                        .setExistingName(existingByCode.getName())
-                        .setExistingId(existingByCode.getId()));
-                continue;
-            }
-            try {
-                MetricCmd cmd = new MetricCmd()
-                        .setName(metricName)
-                        .setCode(code)
-                        .setBusinessName(metricName)
-                        .setDescription("从数据集 " + datasetId + " 一键同步生成")
-                        .setFolder("自动同步")
-                        .setFormat(MetricFormat.NUMBER)
-                        .setType(MetricType.ATOMIC)
-                        .setAggregation(MeasureKind.SUM)
-                        .setDsl(dsl)
-                        .setPrimaryDatasetId(datasetId)
-                        .setPrimaryFieldId(field.getId())
-                        .setSecondaryDatasetIds(Collections.emptyList())
-                        .setDimensions(dimensionRefs)
-                        .setCreatedBy(createdBy);
-                MetricDTO dto = create(cmd);
-                result.setCreated(result.getCreated() + 1);
-                result.getMetrics().add(dto);
-            } catch (Exception e) {
-                log.warn("同步指标失败 datasetId={}, field={}", datasetId, field.getOriginName(), e);
-            }
-        }
-    }
-
-    @Override
-    public MetricResolveDTO resolve(String metricId, String datasetId) {
-        Metric metric = loadMetric(metricId);
+    public MetricResolveDTO resolve(String metricCode, String datasetCode) {
+        Metric metric = loadMetric(metricCode);
         Assert.isTrue(metric.isPublished(), new SilentException("指标未发布,不可解析"));
-        MetricBinding binding = metricBindingRepository.findByMetricAndDataset(metricId, datasetId);
-        Assert.notNull(binding, new SilentException("指标未绑定该数据集"));
-        String dsl = (binding.getDslOverride() != null && !binding.getDslOverride().isBlank())
-                ? binding.getDslOverride() : metric.getDsl();
-        List<FieldRefDTO> fields = new ArrayList<>();
-        var resp = datasetClient.resolveField(datasetId, binding.getFieldId());
-        if (resp != null && resp.getData() != null) {
-            ResolveFieldDTO resolved = resp.getData();
-            fields.add(new FieldRefDTO()
-                    .setFieldId(resolved.getId())
-                    .setOriginName(resolved.getOriginName())
-                    .setDatasetId(datasetId));
-        }
-        return new MetricResolveDTO()
-                .setMetricId(metricId)
-                .setDatasetId(datasetId)
-                .setDsl(dsl)
-                .setFields(fields)
-                .setAgg(metric.getMeasureKind());
+        return buildResolveDTO(metric, datasetCode);
     }
 
     @Override
-    public ValidationResultDTO validate(List<String> metricIds, List<String> dimensionIds) {
-        if (metricIds == null || dimensionIds == null || metricIds.isEmpty() || dimensionIds.isEmpty()) {
+    public List<MetricResolveDTO> resolveBatch(ResolveBatchRequestDTO request) {
+        if (request == null || CollectionUtils.isEmpty(request.getMetricCodes())) {
+            return Collections.emptyList();
+        }
+        return request.getMetricCodes().stream()
+                .map(code -> resolve(code, request.getDatasetCode()))
+                .toList();
+    }
+
+    @Override
+    public ValidationResultDTO validate(List<String> metricCodes, List<String> dimCodes) {
+        if (CollectionUtils.isEmpty(metricCodes) || CollectionUtils.isEmpty(dimCodes)) {
             return new ValidationResultDTO().setValid(true);
         }
-        for (String metricId : metricIds) {
-            for (String dimensionId : dimensionIds) {
-                if (!metricCompatRepository.isAllowed(metricId, dimensionId)) {
+        Set<String> dimSet = new HashSet<>(dimCodes);
+        for (String metricCode : metricCodes) {
+            Metric metric = metricRepository.findByMetricCode(metricCode);
+            if (metric == null) {
+                return new ValidationResultDTO().setValid(false)
+                        .setReason("指标不存在: " + metricCode);
+            }
+            List<String> related = metricDimensionBindingRepository.listByMetric(metric.getId()).stream()
+                    .map(MetricDimensionBinding::getDimensionCode)
+                    .filter(StringUtils::hasText)
+                    .toList();
+            for (String dimCode : dimSet) {
+                if (!related.contains(dimCode)) {
                     return new ValidationResultDTO().setValid(false)
-                            .setReason("指标 " + metricId + " 与维度 " + dimensionId + " 组合不被允许");
+                            .setReason("指标 " + metricCode + " 未关联维度 " + dimCode);
                 }
             }
         }
         return new ValidationResultDTO().setValid(true);
     }
 
-    private Metric loadMetric(String id) {
-        Metric metric = metricRepository.findById(id);
+    @Override
+    public CheckNameResultDTO checkName(String name, String excludeMetricCode) {
+        if (!StringUtils.hasText(name)) {
+            return new CheckNameResultDTO().setAvailable(false).setMessage("指标名称不能为空");
+        }
+        Metric existing = metricRepository.findByName(name.trim());
+        if (existing != null && (excludeMetricCode == null || !excludeMetricCode.equals(existing.getMetricCode()))) {
+            return new CheckNameResultDTO().setAvailable(false).setMessage("该指标名称已存在");
+        }
+        return new CheckNameResultDTO().setAvailable(true);
+    }
+
+    @Override
+    public CheckNameResultDTO checkCode(String code, String excludeMetricCode) {
+        if (!StringUtils.hasText(code)) {
+            return new CheckNameResultDTO().setAvailable(false).setMessage("指标标识不能为空");
+        }
+        Metric existing = metricRepository.findByCode(code.trim());
+        if (existing != null && (excludeMetricCode == null || !excludeMetricCode.equals(existing.getMetricCode()))) {
+            return new CheckNameResultDTO().setAvailable(false).setMessage("该指标标识已存在");
+        }
+        return new CheckNameResultDTO().setAvailable(true);
+    }
+
+    private Metric loadMetric(String metricCode) {
+        Metric metric = metricRepository.findByMetricCode(metricCode);
         Assert.notNull(metric, new SilentException("指标不存在"));
         return metric;
     }
 
-    private void saveBindings(String metricId, MetricCmd cmd) {
-        metricBindingRepository.deleteByMetric(metricId);
-        if (cmd.getPrimaryDatasetId() == null || cmd.getPrimaryDatasetId().isBlank()) {
+    private void saveDimensionBindings(Metric metric, List<MetricDimensionRef> refs) {
+        String metricId = metric.getId();
+        if (CollectionUtils.isEmpty(refs)) {
+            metricDimensionBindingRepository.deleteByMetric(metricId);
             return;
         }
-        MetricBinding primary = new MetricBinding()
-                .setMetricId(metricId)
-                .setDatasetId(cmd.getPrimaryDatasetId())
-                .setFieldId(cmd.getPrimaryFieldId())
-                .setPrimary(true)
-                .setCreatedAt(OffsetDateTime.now())
-                .setUpdatedAt(OffsetDateTime.now());
-        metricBindingRepository.save(primary);
-        if (!CollectionUtils.isEmpty(cmd.getSecondaryDatasetIds())) {
-            for (String datasetId : cmd.getSecondaryDatasetIds()) {
-                if (datasetId.equals(cmd.getPrimaryDatasetId())) {
-                    continue;
-                }
-                MetricBinding binding = new MetricBinding()
-                        .setMetricId(metricId)
-                        .setDatasetId(datasetId)
-                        .setPrimary(false)
-                        .setCreatedAt(OffsetDateTime.now())
-                        .setUpdatedAt(OffsetDateTime.now());
-                metricBindingRepository.save(binding);
-            }
-        }
-    }
-
-    private void saveDimensionBindings(String metricId, MetricCmd cmd) {
-        metricDimensionBindingRepository.deleteByMetric(metricId);
-        if (CollectionUtils.isEmpty(cmd.getDimensions())) {
-            return;
-        }
-        List<MetricDimensionBinding> bindings = cmd.getDimensions().stream()
+        OffsetDateTime now = OffsetDateTime.now();
+        List<MetricDimensionBinding> bindings = refs.stream()
                 .map(ref -> new MetricDimensionBinding()
                         .setMetricId(metricId)
+                        .setMetricCode(metric.getMetricCode())
                         .setDimensionId(ref.getDimensionId())
-                        .setDimensionName(ref.getDimensionId())
-                        .setDatasetId(ref.getDatasetId()))
+                        .setDimensionCode(ref.getDimensionCode())
+                        .setDimensionName(ref.getDimensionName())
+                        .setSourceType(ref.getSourceType())
+                        .setSourceCode(ref.getSourceCode())
+                        .setCreatedAt(now)
+                        .setUpdatedAt(now))
                 .toList();
         metricDimensionBindingRepository.saveBatch(metricId, bindings);
     }
 
-    private MetricDTO enrichDTO(MetricDTO dto, String metricId) {
+    private void saveVersion(Metric metric, String changeLog) {
+        int nextVersion = metricVersionRepository.listByMetric(metric.getId()).size() + 1;
+        MetricVersion version = new MetricVersion()
+                .setMetricId(metric.getId())
+                .setMetricCode(metric.getMetricCode())
+                .setVersion(nextVersion)
+                .setDsl(metric.getDsl())
+                .setSourceSnapshot(metric.getSourceSnapshot())
+                .setChangeLog(changeLog)
+                .setCreatedBy(metric.getUpdatedBy())
+                .setCreatedAt(OffsetDateTime.now())
+                .setUpdatedAt(OffsetDateTime.now());
+        metricVersionRepository.save(version);
+    }
+
+    private List<BindableSourceDTO> listBindableDatasets() {
+        Response<com.cyan.arch.common.api.Page<DatasetListItemDTO>> resp =
+                datasetClient.page(1, 100, null, null, null);
+        if (resp == null || resp.getCode() != 200 || resp.getData() == null) {
+            return Collections.emptyList();
+        }
+        return resp.getData().getData().stream()
+                .map(item -> new BindableSourceDTO()
+                        .setSourceType(MetricSourceType.DATASET)
+                        .setSourceCode(item.getName())
+                        .setSourceName(item.getName())
+                        .setExtra(Map.<String, Object>of("status", String.valueOf(item.getStatus()),
+                                "fieldCount", item.getFieldCount())))
+                .collect(Collectors.toList());
+    }
+
+    private List<BindableSourceDTO> defaultBindableSources(MetricSourceType sourceType) {
+        return switch (sourceType) {
+            case PORTRAIT_FEATURE -> List.of(
+                    new BindableSourceDTO().setSourceType(sourceType)
+                            .setSourceCode("FEAT_30D_CONSUME_AMOUNT")
+                            .setSourceName("用户近30天消费金额"),
+                    new BindableSourceDTO().setSourceType(sourceType)
+                            .setSourceCode("FEAT_7D_VISIT_COUNT")
+                            .setSourceName("用户近7天访问次数"));
+            case PORTRAIT_TAG -> List.of(
+                    new BindableSourceDTO().setSourceType(sourceType)
+                            .setSourceCode("TAG_USER_LEVEL")
+                            .setSourceName("用户价值分层"),
+                    new BindableSourceDTO().setSourceType(sourceType)
+                            .setSourceCode("TAG_LIFE_CYCLE")
+                            .setSourceName("生命周期阶段"));
+            case PORTRAIT_CROWD -> List.of(
+                    new BindableSourceDTO().setSourceType(sourceType)
+                            .setSourceCode("CROWD_HIGH_VALUE_USER")
+                            .setSourceName("高价值用户人群"),
+                    new BindableSourceDTO().setSourceType(sourceType)
+                            .setSourceCode("CROWD_CHURN_RISK")
+                            .setSourceName("潜在流失人群"));
+            case REALTIME_TABLE -> List.of(
+                    new BindableSourceDTO().setSourceType(sourceType)
+                            .setSourceCode("RT_EVENT_CLICK_1MIN")
+                            .setSourceName("实时点击事件分钟表"),
+                    new BindableSourceDTO().setSourceType(sourceType)
+                            .setSourceCode("RT_ORDER_PAY_1MIN")
+                            .setSourceName("实时支付事件分钟表"));
+            case HTTP_API -> List.of(
+                    new BindableSourceDTO().setSourceType(sourceType)
+                            .setSourceCode("API_RISK_SCORE")
+                            .setSourceName("实时风控分"),
+                    new BindableSourceDTO().setSourceType(sourceType)
+                            .setSourceCode("API_USER_PROFILE")
+                            .setSourceName("用户画像服务"));
+            default -> Collections.emptyList();
+        };
+    }
+
+    private MetricDTO enrichDTO(MetricDTO dto) {
         if (dto == null) {
             return null;
         }
-        List<MetricBinding> bindings = metricBindingRepository.listByMetric(metricId);
-        List<String> secondaryDatasetIds = bindings.stream()
-                .filter(b -> !b.isPrimary())
-                .map(MetricBinding::getDatasetId)
-                .distinct()
-                .toList();
-        List<MetricDimensionBinding> dimBindings = metricDimensionBindingRepository.listByMetric(metricId);
-        List<MetricDimensionRefDTO> dimensionRefs = dimBindings.stream()
-                .map(b -> new MetricDimensionRefDTO()
-                        .setDimensionId(b.getDimensionName())
-                        .setDatasetId(b.getDatasetId()))
-                .toList();
-        dto.setSecondaryDatasetIds(secondaryDatasetIds);
-        dto.setSecondaryDatasetCount(secondaryDatasetIds.size());
-        dto.setDimensionCount(dimBindings.size());
-        dto.setDimensions(dimensionRefs);
-        dto.setAggregation(dto.getMeasureKind());
-        // 主数据集名称由调用方补充（避免循环依赖）
+        List<MetricDimensionBinding> bindings = metricDimensionBindingRepository.listByMetric(dto.getId());
+        dto.setRelatedDimensions(bindings.stream()
+                .map(b -> StringUtils.hasText(b.getDimensionName()) ? b.getDimensionName() : b.getDimensionCode())
+                .filter(StringUtils::hasText)
+                .toList());
+        dto.setSourceTypeLabel(sourceTypeLabel(dto.getSourceType()));
+        dto.setLogicSummary(logicSummary(dto));
         return dto;
     }
 
-    private MetricDTO toDTO(Metric metric) {
-        return new MetricDTO()
-                .setId(metric.getId())
-                .setName(metric.getName())
-                .setCode(metric.getCode())
-                .setBusinessName(metric.getBusinessName())
-                .setDescription(metric.getDescription())
-                .setFolder(metric.getFolder())
-                .setFormat(metric.getFormat())
-                .setType(metric.getType())
-                .setMeasureKind(metric.getMeasureKind())
-                .setAggregation(metric.getMeasureKind())
-                .setDsl(metric.getDsl())
-                .setFilterCondition(metric.getFilterCondition())
-                .setPrecision(metric.getPrecision())
-                .setPrimaryDatasetId(metric.getPrimaryDatasetId())
+    private MetricDTO enrichDetail(MetricDTO dto) {
+        enrichDTO(dto);
+        if (dto == null) {
+            return null;
+        }
+        Metric metric = metricRepository.findById(dto.getId());
+        if (metric == null) {
+            return dto;
+        }
+        if (metric.getSourceType() == MetricSourceType.HTTP_API) {
+            dto.setApiLookupPlan(JSON.toJSONString(buildApiLookupPlan(metric)));
+        } else {
+            dto.setSqlPreview(buildPreviewSql(metric, new PreviewRequestDTO().setBizDate("latest")));
+        }
+        return dto;
+    }
+
+    private String sourceTypeLabel(MetricSourceType sourceType) {
+        if (sourceType == null) {
+            return "";
+        }
+        return switch (sourceType) {
+            case DATASET -> "数据集";
+            case PORTRAIT_FEATURE, PORTRAIT_TAG, PORTRAIT_CROWD -> "画像平台";
+            case REALTIME_TABLE -> "实时表";
+            case HTTP_API -> "HTTP API";
+        };
+    }
+
+    private String logicSummary(MetricDTO dto) {
+        if (dto.getDslKind() == MetricDslKind.API_METRIC) {
+            return "IMPORT " + (dto.getSourceType() == null ? "" : dto.getSourceType().getCode());
+        }
+        if (!StringUtils.hasText(dto.getDsl())) {
+            return "";
+        }
+        try {
+            JSONObject dsl = JSON.parseObject(dto.getDsl());
+            JSONObject expr = dsl.getJSONObject("expr");
+            if (expr == null) {
+                return dto.getDslKind() == null ? "" : dto.getDslKind().getCode();
+            }
+            String op = expr.getString("op");
+            if ("featureValue".equals(op)) {
+                return "IMPORT portraitFeature";
+            }
+            String func = expr.getString("func");
+            String fieldCode = expr.getString("fieldCode");
+            if (func != null && fieldCode != null) {
+                return func.toUpperCase() + "(" + fieldCode + ")";
+            }
+        } catch (Exception e) {
+            log.warn("解析 DSL 摘要失败 metricCode={}", dto.getMetricCode(), e);
+        }
+        return dto.getDslKind() == null ? "" : dto.getDslKind().getCode();
+    }
+
+    private String buildPreviewSql(Metric metric, PreviewRequestDTO request) {
+        String bizDate = request == null || !StringUtils.hasText(request.getBizDate()) ? "latest" : request.getBizDate();
+        String metricCode = metric.getMetricCode();
+        StringBuilder sql = new StringBuilder();
+        if (metric.getSourceType() == MetricSourceType.PORTRAIT_FEATURE) {
+            JSONObject dsl = parseDsl(metric.getDsl());
+            String featureCode = extractString(dsl, "source", "featureCode");
+            if (!StringUtils.hasText(featureCode)) {
+                featureCode = metric.getSourceCode();
+            }
+            sql.append("SELECT SUM(CAST(feature_value_decimal AS DECIMAL(18,2))) AS ").append(metricCode)
+                    .append(" FROM portrait_feature_value_store")
+                    .append(" WHERE entity_type = 'user'")
+                    .append(" AND feature_code = '").append(featureCode).append("'")
+                    .append(" AND dt = ${bizDate}");
+        } else if (metric.getSourceType() == MetricSourceType.REALTIME_TABLE) {
+            JSONObject dsl = parseDsl(metric.getDsl());
+            String func = extractString(dsl, "expr", "func");
+            String fieldCode = extractString(dsl, "expr", "fieldCode");
+            if (!StringUtils.hasText(func)) func = "SUM";
+            if (!StringUtils.hasText(fieldCode)) fieldCode = "value";
+            sql.append("SELECT ").append(func.toUpperCase())
+                    .append("(").append(fieldCode).append(") AS ").append(metricCode)
+                    .append(" FROM ").append(metric.getSourceCode())
+                    .append(" WHERE dt = ${bizDate}");
+        } else {
+            // dataset / default
+            JSONObject dsl = parseDsl(metric.getDsl());
+            String func = extractString(dsl, "expr", "func");
+            String fieldCode = extractString(dsl, "expr", "fieldCode");
+            if (!StringUtils.hasText(func)) func = "SUM";
+            if (!StringUtils.hasText(fieldCode)) fieldCode = "value";
+            sql.append("SELECT ").append(func.toUpperCase())
+                    .append("(CAST(").append(fieldCode).append(" AS DECIMAL(18,2))) AS ").append(metricCode)
+                    .append(" FROM ").append(metric.getSourceCode());
+            List<String> clauses = new ArrayList<>(buildFilterClauses(dsl));
+            clauses.add("dt = ${bizDate}");
+            sql.append(" WHERE ").append(String.join(" AND ", clauses));
+        }
+        sql.append("\n-- bizDate=").append(bizDate);
+        return sql.toString();
+    }
+
+    private Map<String, Object> buildApiLookupPlan(Metric metric) {
+        Map<String, Object> plan = new LinkedHashMap<>();
+        plan.put("planType", "apiLookup");
+        plan.put("sourceCode", metric.getSourceCode());
+        plan.put("sourceType", metric.getSourceType() == null ? null : metric.getSourceType().getCode());
+        plan.put("queryMode", metric.getQueryMode() == null ? null : metric.getQueryMode().getCode());
+        plan.put("endpoint", "/" + metric.getSourceCode().toLowerCase().replace("_", "/") + "/batch");
+        plan.put("method", "POST");
+        Map<String, Object> batch = new LinkedHashMap<>();
+        batch.put("maxBatchSize", 500);
+        batch.put("timeoutMs", 3000);
+        plan.put("batch", batch);
+        Map<String, Object> request = new LinkedHashMap<>();
+        request.put("path", "/" + metric.getSourceCode().toLowerCase().replace("_", "/") + "/batch");
+        request.put("bodyMapping", Map.of("entityIds", "$.entityIds"));
+        plan.put("request", request);
+        plan.put("responseMapping", Map.of("valuePath", "$.value"));
+        plan.put("entityKey", "userId");
+        return plan;
+    }
+
+    private MetricResolveDTO buildResolveDTO(Metric metric, String datasetCode) {
+        MetricResolveDTO dto = new MetricResolveDTO()
+                .setMetricCode(metric.getMetricCode())
+                .setMetricName(metric.getName())
                 .setStatus(metric.getStatus())
-                .setVersion(metric.getVersion())
-                .setOwnerId(metric.getOwnerId())
-                .setCreatedBy(metric.getCreatedBy())
-                .setUpdatedBy(metric.getUpdatedBy())
-                .setCreateTime(metric.getCreatedAt())
-                .setUpdateTime(metric.getUpdatedAt());
+                .setSourceType(metric.getSourceType())
+                .setSourceCode(metric.getSourceCode())
+                .setQueryMode(metric.getQueryMode())
+                .setFreshness(metric.getFreshness())
+                .setRequiredFields(new ArrayList<>());
+        Map<String, Object> source = new LinkedHashMap<>();
+        source.put("type", metric.getSourceType() == null ? null : metric.getSourceType().getCode());
+        source.put("sourceCode", metric.getSourceCode());
+        source.put("sourceName", metric.getSourceName());
+        if (StringUtils.hasText(metric.getSourceSnapshot())) {
+            try {
+                source.putAll(JSON.parseObject(metric.getSourceSnapshot()));
+            } catch (Exception ignored) {
+            }
+        }
+        if (metric.getSourceType() == MetricSourceType.DATASET && StringUtils.hasText(datasetCode)) {
+            source.put("datasetCode", datasetCode);
+        }
+        dto.setSource(source);
+        JSONObject dsl = parseDsl(metric.getDsl());
+        if (dsl != null) {
+            dto.setDsl(new LinkedHashMap<>(dsl));
+            dto.getRequiredFields().addAll(extractRequiredFields(dsl, metric.getSourceType()));
+        }
+        return dto;
     }
 
-    private DimensionDTO toDimensionDTO(Dimension dimension) {
-        return new DimensionDTO()
-                .setId(dimension.getId())
-                .setName(dimension.getName())
-                .setBusinessName(dimension.getBusinessName())
-                .setFolder(dimension.getFolder())
-                .setSemanticType(dimension.getSemanticType())
-                .setDictionaryId(dimension.getDictionaryId())
-                .setFormat(dimension.getFormat())
-                .setStatus(dimension.getStatus())
-                .setCreatedBy(dimension.getCreatedBy())
-                .setCreatedAt(dimension.getCreatedAt())
-                .setUpdatedAt(dimension.getUpdatedAt());
-    }
-
-    private String fieldDisplayName(DatasetFieldDTO field) {
-        return field.getAlias() != null && !field.getAlias().isBlank()
-                ? field.getAlias() : field.getOriginName();
-    }
-
-    private SemanticType resolveSemanticType(DatasetFieldDTO field) {
-        String semanticType = field.getSemanticType();
-        if (semanticType != null && !semanticType.isBlank()) {
-            for (SemanticType type : SemanticType.values()) {
-                if (type.getCode().equalsIgnoreCase(semanticType) || type.name().equalsIgnoreCase(semanticType)) {
-                    return type;
+    private List<String> extractRequiredFields(JSONObject dsl, MetricSourceType sourceType) {
+        Set<String> fields = new LinkedHashSet<>();
+        if (dsl == null) {
+            return new ArrayList<>(fields);
+        }
+        JSONObject expr = dsl.getJSONObject("expr");
+        if (expr != null) {
+            String fieldCode = expr.getString("fieldCode");
+            if (StringUtils.hasText(fieldCode)) {
+                fields.add(fieldCode);
+            }
+            String featureValueField = expr.getString("featureValueField");
+            if (StringUtils.hasText(featureValueField)) {
+                fields.add(featureValueField);
+            }
+        }
+        if (sourceType == MetricSourceType.PORTRAIT_FEATURE) {
+            String featureCode = extractString(dsl, "source", "featureCode");
+            if (StringUtils.hasText(featureCode)) {
+                fields.add("feature_code");
+                fields.add("entity_type");
+                fields.add("entity_id");
+            }
+        }
+        List<JSONObject> filters = parseArray(dsl, "filters");
+        for (JSONObject f : filters) {
+            JSONObject target = f.getJSONObject("target");
+            if (target != null) {
+                String fc = target.getString("fieldCode");
+                if (StringUtils.hasText(fc)) {
+                    fields.add(fc);
                 }
             }
         }
-        if (field.getDataType() != null) {
-            String code = field.getDataType().getCode();
-            if ("date".equalsIgnoreCase(code) || "datetime".equalsIgnoreCase(code)) {
-                return SemanticType.TIME;
+        return new ArrayList<>(fields);
+    }
+
+    private List<String> buildFilterClauses(JSONObject dsl) {
+        List<String> clauses = new ArrayList<>();
+        if (dsl == null) {
+            return clauses;
+        }
+        List<JSONObject> filters = parseArray(dsl, "filters");
+        for (JSONObject f : filters) {
+            JSONObject target = f.getJSONObject("target");
+            String op = f.getString("op");
+            Object value = f.get("value");
+            if (target == null || !StringUtils.hasText(op)) {
+                continue;
             }
+            String fieldCode = target.getString("fieldCode");
+            if (!StringUtils.hasText(fieldCode)) {
+                continue;
+            }
+            clauses.add(fieldCode + " " + toSqlOp(op) + " ?");
         }
-        return inferSemanticType(field.getOriginName());
+        return clauses;
     }
 
-    private SemanticType inferSemanticType(String fieldName) {
-        if (fieldName == null) {
-            return SemanticType.CATEGORY;
-        }
-        String lower = fieldName.toLowerCase();
-        if (lower.contains("time") || lower.contains("date") || lower.contains("year")
-                || lower.contains("month") || lower.contains("day") || lower.contains("hour")
-                || lower.contains("minute") || lower.contains("second") || lower.contains("dt")) {
-            return SemanticType.TIME;
-        }
-        if (lower.contains("province") || lower.contains("city") || lower.contains("region")
-                || lower.contains("area") || lower.contains("country") || lower.contains("geo")
-                || lower.contains("lat") || lower.contains("lng") || lower.contains("latitude")
-                || lower.contains("longitude") || lower.contains("location")) {
-            return SemanticType.GEO;
-        }
-        return SemanticType.CATEGORY;
+    private String toSqlOp(String op) {
+        return switch (op.toLowerCase()) {
+            case "eq" -> "=";
+            case "neq" -> "<>";
+            case "gt" -> ">";
+            case "gte" -> ">=";
+            case "lt" -> "<";
+            case "lte" -> "<=";
+            case "like" -> "LIKE";
+            default -> "=";
+        };
     }
 
-    private String toCode(String name) {
-        if (name == null) {
-            return "";
+    private JSONObject parseDsl(String dsl) {
+        if (!StringUtils.hasText(dsl)) {
+            return new JSONObject();
         }
-        String code = name.trim()
-                .toLowerCase()
-                .replaceAll("[^a-z0-9_]+", "_")
-                .replaceAll("_+", "_")
-                .replaceAll("^_+|_+$", "");
-        if (code.isEmpty()) {
-            code = "metric_" + System.currentTimeMillis();
+        try {
+            return JSON.parseObject(dsl);
+        } catch (Exception e) {
+            log.warn("解析 DSL 失败 dsl={}", dsl, e);
+            return new JSONObject();
         }
-        return code;
+    }
+
+    private String extractString(JSONObject root, String path1, String path2) {
+        if (root == null) {
+            return null;
+        }
+        JSONObject node = root.getJSONObject(path1);
+        if (node == null) {
+            return null;
+        }
+        return node.getString(path2);
+    }
+
+    private List<JSONObject> parseArray(JSONObject root, String key) {
+        if (root == null) {
+            return Collections.emptyList();
+        }
+        try {
+            return root.getJSONArray(key).toList(JSONObject.class);
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
+    }
+
+    private String formatValue(double value, MetricFormat format, Integer precision) {
+        int p = precision == null ? 2 : precision;
+        BigDecimal v = BigDecimal.valueOf(value).setScale(p, RoundingMode.HALF_UP);
+        if (format == MetricFormat.CURRENCY) {
+            return "¥ " + v.toPlainString();
+        }
+        if (format == MetricFormat.PERCENT) {
+            return v.toPlainString() + "%";
+        }
+        return v.toPlainString();
     }
 }

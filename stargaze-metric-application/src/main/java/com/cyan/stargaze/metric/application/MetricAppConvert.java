@@ -24,7 +24,11 @@ public interface MetricAppConvert {
 
     MetricAppConvert INSTANCE = Mappers.getMapper(MetricAppConvert.class);
 
-    @Mapping(target = "measureKind", source = "aggregation")
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
     Metric toMetric(MetricCmd cmd);
 
     MetricBinding toMetricBinding(MetricBindingCmd cmd);
