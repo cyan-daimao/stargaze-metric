@@ -301,10 +301,7 @@ public class Metric {
                 featureCode = this.sourceCode;
             }
             sql.append("SELECT SUM(CAST(feature_value_decimal AS DECIMAL(18,2))) AS ").append(metricCode)
-                    .append(" FROM portrait_feature_value_store")
-                    .append(" WHERE entity_type = 'user'")
-                    .append(" AND feature_code = '").append(featureCode).append("'")
-                    .append(" AND dt = ${bizDate}");
+                    .append(" FROM portrait_feature_value_store");
         } else if (this.sourceType == MetricSourceType.REALTIME_TABLE) {
             String func = dslField("expr", "func");
             String fieldCode = dslField("expr", "fieldCode");
@@ -316,8 +313,7 @@ public class Metric {
             }
             sql.append("SELECT ").append(func.toUpperCase())
                     .append("(").append(fieldCode).append(") AS ").append(metricCode)
-                    .append(" FROM ").append(this.sourceCode)
-                    .append(" WHERE dt = ${bizDate}");
+                    .append(" FROM ").append(this.sourceCode);
         } else {
             String func = dslField("expr", "func");
             String fieldCode = dslField("expr", "fieldCode");
@@ -330,10 +326,6 @@ public class Metric {
             sql.append("SELECT ").append(func.toUpperCase())
                     .append("(CAST(").append(fieldCode).append(" AS DECIMAL(18,2))) AS ").append(metricCode)
                     .append(" FROM ").append(this.sourceCode);
-            // TODO: 后续根据维度绑定/筛选条件补充 WHERE 子句
-            List<String> clauses = new ArrayList<>();
-            clauses.add("dt = ${bizDate}");
-            sql.append(" WHERE ").append(String.join(" AND ", clauses));
         }
         sql.append("\n-- bizDate=").append(date);
         return sql.toString();
