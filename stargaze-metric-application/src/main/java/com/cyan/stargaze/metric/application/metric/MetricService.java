@@ -57,7 +57,7 @@ public interface MetricService {
     PageDTO<SyncDatasetItemDTO> syncDatasets(Integer page, Integer size, String keyword, String type);
 
     /** 一键同步:执行同步 */
-    MetricSyncResultDTO sync(MetricSyncRequestDTO request);
+    MetricSyncResultDTO sync(MetricSyncRequestDTO request, String operator);
 
     /** 校验指标×维度组合合法性 */
     ValidationResultDTO validate(List<String> metricCodes, List<String> dimCodes);

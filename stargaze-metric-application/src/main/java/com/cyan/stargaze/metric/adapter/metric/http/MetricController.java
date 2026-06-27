@@ -91,7 +91,7 @@ public class MetricController {
 
     @PostMapping("/sync")
     public Response<MetricSyncResultDTO> sync(@RequestBody @Valid MetricSyncRequestDTO request) {
-        return Response.success(metricService.sync(request));
+        return Response.success(metricService.sync(request, currentPassport()));
     }
 
     @PostMapping

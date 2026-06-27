@@ -22,7 +22,17 @@ public enum MetricDslKind {
     /** 窗口指标 */
     WINDOW("WINDOW"),
     /** API 指标 */
-    API_METRIC("API_METRIC");
+    API_METRIC("API_METRIC"),
+    /** 维度字段映射 */
+    FIELD("FIELD"),
+    /** 时间维度 */
+    TIME("TIME"),
+    /** 维度映射 */
+    MAPPING("MAPPING"),
+    /** 画像标签维度 */
+    PORTRAIT_TAG("PORTRAIT_TAG"),
+    /** API 查询维度 */
+    API_LOOKUP("API_LOOKUP");
 
     @EnumValue
     @JsonValue
