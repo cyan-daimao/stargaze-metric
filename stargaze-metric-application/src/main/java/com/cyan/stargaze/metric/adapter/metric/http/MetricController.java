@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.cyan.arch.common.api.Page;
 import com.cyan.arch.common.api.Response;
 import com.cyan.employee.login.filter.UserContextHolder;
 import com.cyan.stargaze.metric.adapter.MetricAdapterConvert;
@@ -19,16 +20,15 @@ import com.cyan.stargaze.metric.adapter.metric.http.dto.MetricDetailDTO;
 import com.cyan.stargaze.metric.adapter.metric.http.dto.MetricListItemDTO;
 import com.cyan.stargaze.metric.adapter.metric.http.dto.SyncDatasetItemDTO;
 import com.cyan.stargaze.metric.application.metric.MetricService;
+import com.cyan.stargaze.metric.application.metric.bo.MetricBO;
+import com.cyan.stargaze.metric.application.metric.bo.SyncDatasetItemBO;
 import com.cyan.stargaze.metric.application.metric.cmd.MetricCmd;
 import com.cyan.stargaze.metric.client.dto.BindableSourceDTO;
 import com.cyan.stargaze.metric.client.dto.CheckNameResultDTO;
-import com.cyan.stargaze.metric.client.dto.MetricDTO;
 import com.cyan.stargaze.metric.client.dto.MetricSyncRequestDTO;
 import com.cyan.stargaze.metric.client.dto.MetricSyncResultDTO;
-import com.cyan.stargaze.metric.client.dto.PageDTO;
 import com.cyan.stargaze.metric.client.dto.PreviewRequestDTO;
 import com.cyan.stargaze.metric.client.dto.PreviewResponseDTO;
-import com.cyan.stargaze.metric.domain.metric.repository.MetricRepository;
 import com.cyan.stargaze.metric.enums.MetricSourceType;
 
 import jakarta.validation.Valid;
@@ -46,23 +46,18 @@ import lombok.RequiredArgsConstructor;
 public class MetricController {
 
     private final MetricService metricService;
-    private final MetricRepository metricRepository;
     private final MetricAdapterConvert adapterConvert;
 
     @GetMapping
-    public Response<PageDTO<MetricListItemDTO>> list(
+    public Response<Page<MetricListItemDTO>> list(
             @RequestParam(value = "page", defaultValue = "1") Integer page,
             @RequestParam(value = "size", defaultValue = "20") Integer size,
             @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "folder", required = false) String folder) {
-        PageDTO<MetricDTO> result = metricService.list(page, size, keyword, status, folder);
+        Page<MetricBO> result = metricService.list(page, size, keyword, status, folder);
         List<MetricListItemDTO> items = adapterConvert.toListItemList(result.getData());
-        return Response.success(new PageDTO<MetricListItemDTO>()
-                .setData(items)
-                .setTotal(result.getTotal())
-                .setPage(result.getPage())
-                .setSize(result.getSize()));
+        return Response.success(new Page<>(items, result.getCurrent(), result.getSize(), result.getTotal()));
     }
 
     @GetMapping("/{metricCode}")
@@ -81,12 +76,14 @@ public class MetricController {
     }
 
     @GetMapping("/sync-datasets")
-    public Response<PageDTO<SyncDatasetItemDTO>> syncDatasets(
+    public Response<Page<SyncDatasetItemDTO>> syncDatasets(
             @RequestParam(value = "page", defaultValue = "1") Integer page,
             @RequestParam(value = "size", defaultValue = "20") Integer size,
             @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(value = "type", required = false) String type) {
-        return Response.success(metricService.syncDatasets(page, size, keyword, type));
+        Page<SyncDatasetItemBO> result = metricService.syncDatasets(page, size, keyword, type);
+        List<SyncDatasetItemDTO> items = adapterConvert.toSyncDatasetItemDTOList(result.getData());
+        return Response.success(new Page<>(items, result.getCurrent(), result.getSize(), result.getTotal()));
     }
 
     @PostMapping("/sync")
@@ -133,7 +130,7 @@ public class MetricController {
 
     @GetMapping("/folders")
     public Response<List<String>> listFolders() {
-        return Response.success(metricRepository.listDistinctFolders());
+        return Response.success(metricService.listFolders());
     }
 
     @GetMapping("/check-name")

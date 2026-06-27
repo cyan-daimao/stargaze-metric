@@ -1,8 +1,7 @@
 package com.cyan.stargaze.metric.infra.persistence.metric.repository;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.cyan.arch.common.api.Page;
 import com.cyan.stargaze.metric.domain.metric.Metric;
 import com.cyan.stargaze.metric.domain.metric.repository.MetricRepository;
 import com.cyan.stargaze.metric.enums.MetricStatus;
@@ -13,6 +12,7 @@ import com.cyan.stargaze.metric.infra.util.IdUtil;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class MetricRepositoryImpl implements MetricRepository {
@@ -61,7 +61,7 @@ public class MetricRepositoryImpl implements MetricRepository {
     }
 
     @Override
-    public IPage<Metric> page(IPage<Metric> page, String keyword, MetricStatus status, String folder) {
+    public Page<Metric> page(int current, int size, String keyword, MetricStatus status, String folder) {
         LambdaQueryWrapper<MetricDO> wrapper = new LambdaQueryWrapper<MetricDO>()
                 .and(keyword != null && !keyword.isBlank(), w -> w
                         .like(MetricDO::getName, keyword)
@@ -72,9 +72,13 @@ public class MetricRepositoryImpl implements MetricRepository {
                 .eq(status != null, MetricDO::getStatus, status)
                 .eq(folder != null && !folder.isBlank(), MetricDO::getFolder, folder)
                 .orderByDesc(MetricDO::getCreatedAt);
-        Page<MetricDO> doPage = new Page<>(page.getCurrent(), page.getSize());
-        IPage<MetricDO> result = mapper.selectPage(doPage, wrapper);
-        return result.convert(convert::toMetric);
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<MetricDO> doPage =
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(current, size);
+        var result = mapper.selectPage(doPage, wrapper);
+        List<Metric> data = Optional.ofNullable(result.getRecords()).orElse(List.of()).stream()
+                .map(convert::toMetric)
+                .toList();
+        return new Page<>(data, result.getCurrent(), result.getSize(), result.getTotal());
     }
 
     @Override

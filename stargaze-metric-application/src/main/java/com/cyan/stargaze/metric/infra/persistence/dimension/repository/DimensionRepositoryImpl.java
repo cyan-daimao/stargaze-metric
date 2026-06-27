@@ -1,8 +1,7 @@
 package com.cyan.stargaze.metric.infra.persistence.dimension.repository;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.cyan.arch.common.api.Page;
 import com.cyan.stargaze.metric.domain.dimension.Dimension;
 import com.cyan.stargaze.metric.domain.dimension.repository.DimensionRepository;
 import com.cyan.stargaze.metric.enums.MetricStatus;
@@ -13,6 +12,7 @@ import com.cyan.stargaze.metric.infra.util.IdUtil;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class DimensionRepositoryImpl implements DimensionRepository {
@@ -39,6 +39,13 @@ public class DimensionRepositoryImpl implements DimensionRepository {
     }
 
     @Override
+    public Dimension findByCode(String code) {
+        DimensionDO doObj = mapper.selectOne(new LambdaQueryWrapper<DimensionDO>()
+                .eq(DimensionDO::getCode, code));
+        return doObj == null ? null : convert.toDimension(doObj);
+    }
+
+    @Override
     public List<Dimension> list(MetricStatus status) {
         LambdaQueryWrapper<DimensionDO> wrapper = new LambdaQueryWrapper<DimensionDO>()
                 .eq(status != null, DimensionDO::getStatus, status)
@@ -47,7 +54,7 @@ public class DimensionRepositoryImpl implements DimensionRepository {
     }
 
     @Override
-    public IPage<Dimension> page(IPage<Dimension> page, String keyword, MetricStatus status, String folder) {
+    public Page<Dimension> page(int current, int size, String keyword, MetricStatus status, String folder) {
         LambdaQueryWrapper<DimensionDO> wrapper = new LambdaQueryWrapper<DimensionDO>()
                 .and(keyword != null && !keyword.isBlank(), w -> w
                         .like(DimensionDO::getName, keyword)
@@ -56,9 +63,13 @@ public class DimensionRepositoryImpl implements DimensionRepository {
                 .eq(status != null, DimensionDO::getStatus, status)
                 .eq(folder != null && !folder.isBlank(), DimensionDO::getFolder, folder)
                 .orderByDesc(DimensionDO::getCreatedAt);
-        Page<DimensionDO> doPage = new Page<>(page.getCurrent(), page.getSize());
-        IPage<DimensionDO> result = mapper.selectPage(doPage, wrapper);
-        return result.convert(convert::toDimension);
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<DimensionDO> doPage =
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(current, size);
+        var result = mapper.selectPage(doPage, wrapper);
+        List<Dimension> data = Optional.ofNullable(result.getRecords()).orElse(List.of()).stream()
+                .map(convert::toDimension)
+                .toList();
+        return new Page<>(data, result.getCurrent(), result.getSize(), result.getTotal());
     }
 
     @Override

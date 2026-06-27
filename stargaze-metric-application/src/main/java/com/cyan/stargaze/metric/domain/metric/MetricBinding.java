@@ -2,6 +2,7 @@ package com.cyan.stargaze.metric.domain.metric;
 
 import com.cyan.arch.common.api.Assert;
 import com.cyan.arch.common.api.SilentException;
+import com.cyan.stargaze.metric.domain.metric.repository.MetricBindingRepository;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -39,6 +40,12 @@ public class MetricBinding {
     /** 该数据集下 DSL 覆盖(可空) */
     private String dslOverride;
 
+    /** 创建人 */
+    private String createdBy;
+
+    /** 修改人 */
+    private String updatedBy;
+
     /** 创建时间 */
     private OffsetDateTime createdAt;
 
@@ -56,5 +63,30 @@ public class MetricBinding {
 
     public boolean isPrimary() {
         return this.primary != null && this.primary;
+    }
+
+    /**
+     * 保存绑定关系。
+     */
+    public MetricBinding save(MetricBindingRepository repo) {
+        this.validate();
+        return repo.save(this);
+    }
+
+    /**
+     * 更新绑定关系。
+     */
+    public MetricBinding update(MetricBindingRepository repo) {
+        Assert.notBlank(this.id, new SilentException("绑定 ID 不能为空"));
+        this.validate();
+        return repo.save(this);
+    }
+
+    /**
+     * 删除绑定关系。
+     */
+    public void delete(MetricBindingRepository repo) {
+        Assert.notBlank(this.id, new SilentException("绑定 ID 不能为空"));
+        repo.deleteById(this.id);
     }
 }

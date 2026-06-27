@@ -1,6 +1,6 @@
 package com.cyan.stargaze.metric.domain.metric.repository;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.cyan.arch.common.api.Page;
 import com.cyan.stargaze.metric.domain.metric.Metric;
 import com.cyan.stargaze.metric.enums.MetricStatus;
 
@@ -24,7 +24,7 @@ public interface MetricRepository {
 
     List<Metric> list(MetricStatus status);
 
-    IPage<Metric> page(IPage<Metric> page, String keyword, MetricStatus status, String folder);
+    Page<Metric> page(int current, int size, String keyword, MetricStatus status, String folder);
 
     Metric save(Metric metric);
 

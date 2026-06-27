@@ -33,6 +33,10 @@ public abstract class MetricInfraConvert {
 
     @Mapping(target = "id", source = "id", qualifiedByName = "l2s")
     @Mapping(target = "ownerId", source = "ownerId", qualifiedByName = "l2s")
+    @Mapping(target = "save", ignore = true)
+    @Mapping(target = "update", ignore = true)
+    @Mapping(target = "publish", ignore = true)
+    @Mapping(target = "offline", ignore = true)
     public abstract Metric toMetric(MetricDO doObj);
 
     @Mapping(target = "id", source = "id", qualifiedByName = "s2l")
@@ -53,6 +57,10 @@ public abstract class MetricInfraConvert {
 
     @Mapping(target = "id", source = "id", qualifiedByName = "l2s")
     @Mapping(target = "ownerId", source = "ownerId", qualifiedByName = "l2s")
+    @Mapping(target = "save", ignore = true)
+    @Mapping(target = "update", ignore = true)
+    @Mapping(target = "publish", ignore = true)
+    @Mapping(target = "offline", ignore = true)
     public abstract Dimension toDimension(DimensionDO doObj);
 
     @Mapping(target = "id", source = "id", qualifiedByName = "s2l")

@@ -1,15 +1,13 @@
 package com.cyan.stargaze.metric.adapter.metric.rpc;
 
 import com.cyan.arch.common.api.Response;
+import com.cyan.stargaze.metric.adapter.MetricAdapterConvert;
 import com.cyan.stargaze.metric.application.metric.MetricService;
 import com.cyan.stargaze.metric.client.MetricClient;
 import com.cyan.stargaze.metric.client.dto.MetricDTO;
 import com.cyan.stargaze.metric.client.dto.MetricResolveDTO;
 import com.cyan.stargaze.metric.client.dto.ResolveBatchRequestDTO;
 import com.cyan.stargaze.metric.client.dto.ValidationResultDTO;
-import com.cyan.stargaze.metric.domain.metric.Metric;
-import com.cyan.stargaze.metric.domain.metric.repository.MetricRepository;
-import com.cyan.stargaze.metric.enums.MetricStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,7 +28,7 @@ import java.util.List;
 public class MetricRpcController implements MetricClient {
 
     private final MetricService metricService;
-    private final MetricRepository metricRepository;
+    private final MetricAdapterConvert adapterConvert;
 
     @Override
     public Response<MetricResolveDTO> resolve(String metricCode, String datasetCode) {
@@ -39,20 +37,7 @@ public class MetricRpcController implements MetricClient {
 
     @Override
     public Response<List<MetricDTO>> list() {
-        return Response.success(metricRepository.list(MetricStatus.PUBLISHED).stream()
-                .map(m -> new MetricDTO()
-                        .setMetricCode(m.getMetricCode())
-                        .setName(m.getName())
-                        .setCode(m.getCode())
-                        .setSourceType(m.getSourceType())
-                        .setSourceCode(m.getSourceCode())
-                        .setSourceName(m.getSourceName())
-                        .setQueryMode(m.getQueryMode())
-                        .setFreshness(m.getFreshness())
-                        .setDslKind(m.getDslKind())
-                        .setDsl(m.getDsl())
-                        .setStatus(m.getStatus()))
-                .toList());
+        return Response.success(adapterConvert.toMetricDTOListFromBO(metricService.listPublished()));
     }
 
     @Override
@@ -62,8 +47,7 @@ public class MetricRpcController implements MetricClient {
 
     @Override
     public Response<Boolean> exists(String metricCode) {
-        Metric metric = metricRepository.findByMetricCode(metricCode);
-        return Response.success(metric != null && metric.isPublished());
+        return Response.success(metricService.isPublished(metricCode));
     }
 
     @Override

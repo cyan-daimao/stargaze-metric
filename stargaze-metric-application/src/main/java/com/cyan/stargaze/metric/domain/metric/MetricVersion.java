@@ -1,5 +1,8 @@
 package com.cyan.stargaze.metric.domain.metric;
 
+import com.cyan.arch.common.api.Assert;
+import com.cyan.arch.common.api.SilentException;
+import com.cyan.stargaze.metric.domain.metric.repository.MetricVersionRepository;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -43,6 +46,9 @@ public class MetricVersion {
     /** 创建人工号 */
     private String createdBy;
 
+    /** 修改人 */
+    private String updatedBy;
+
     /** 创建时间 */
     private OffsetDateTime createdAt;
 
@@ -51,4 +57,22 @@ public class MetricVersion {
 
     /** 逻辑删除时间 */
     private OffsetDateTime deletedAt;
+
+    /**
+     * 校验版本合法性。
+     */
+    public void validate() {
+        Assert.notBlank(this.metricId, new SilentException("指标 ID 不能为空"));
+        Assert.notBlank(this.metricCode, new SilentException("指标编码不能为空"));
+        Assert.notBlank(this.dsl, new SilentException("DSL 快照不能为空"));
+        Assert.isTrue(this.version != null && this.version > 0, new SilentException("版本号必须大于 0"));
+    }
+
+    /**
+     * 保存版本记录。
+     */
+    public MetricVersion save(MetricVersionRepository repo) {
+        this.validate();
+        return repo.save(this);
+    }
 }

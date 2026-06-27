@@ -1,10 +1,7 @@
 package com.cyan.stargaze.metric.adapter.dimension.http;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
-import com.alibaba.fastjson2.JSON;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.cyan.arch.common.api.Page;
 import com.cyan.arch.common.api.Response;
 import com.cyan.employee.login.filter.UserContextHolder;
 import com.cyan.stargaze.metric.adapter.MetricAdapterConvert;
@@ -23,12 +21,7 @@ import com.cyan.stargaze.metric.adapter.dimension.http.dto.DimensionDTO;
 import com.cyan.stargaze.metric.application.dimension.DimensionService;
 import com.cyan.stargaze.metric.application.dimension.cmd.DimensionBindingCmd;
 import com.cyan.stargaze.metric.application.dimension.cmd.DimensionCmd;
-import com.cyan.stargaze.metric.client.dto.PageDTO;
-import com.cyan.stargaze.metric.domain.dimension.Dimension;
 import com.cyan.stargaze.metric.domain.dimension.DimensionBinding;
-import com.cyan.stargaze.metric.domain.dimension.repository.DimensionBindingRepository;
-import com.cyan.stargaze.metric.domain.dimension.repository.DimensionRepository;
-import com.cyan.stargaze.metric.domain.metric.repository.MetricDimensionBindingRepository;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -45,37 +38,35 @@ import lombok.RequiredArgsConstructor;
 public class DimensionController {
 
   private final DimensionService dimensionService;
-  private final DimensionRepository dimensionRepository;
-  private final DimensionBindingRepository dimensionBindingRepository;
-  private final MetricDimensionBindingRepository metricDimensionBindingRepository;
+  private final MetricAdapterConvert adapterConvert;
 
   // ---- 目录 ----
 
   @GetMapping("/folders")
   public Response<List<String>> listFolders() {
-    return Response.success(dimensionRepository.listDistinctFolders());
+    return Response.success(dimensionService.listFolders());
   }
 
   @PostMapping
   public Response<DimensionDTO> create(@RequestBody @Valid DimensionCmd cmd) {
     cmd.setCreatedBy(UserContextHolder.getCurrentEmployee().getPassport());
-    return Response.success(toDTO(dimensionService.create(cmd)));
+    return Response.success(adapterConvert.toDimensionDTO(dimensionService.create(cmd)));
   }
 
   @PutMapping("/{id}")
   public Response<DimensionDTO> update(@PathVariable String id, @RequestBody @Valid DimensionCmd cmd) {
     cmd.setId(id);
     cmd.setCreatedBy(UserContextHolder.getCurrentEmployee().getPassport());
-    return Response.success(toDTO(dimensionService.update(cmd)));
+    return Response.success(adapterConvert.toDimensionDTO(dimensionService.update(cmd)));
   }
 
   @GetMapping("/{id}")
   public Response<DimensionDTO> findById(@PathVariable String id) {
-    return Response.success(toDTO(dimensionService.findById(id)));
+    return Response.success(adapterConvert.toDimensionDTO(dimensionService.findDetail(id)));
   }
 
   @GetMapping
-  public Response<PageDTO<DimensionDTO>> list(
+  public Response<Page<DimensionDTO>> list(
       @RequestParam(value = "page", defaultValue = "1") Integer page,
       @RequestParam(value = "size", defaultValue = "20") Integer size,
       @RequestParam(value = "keyword", required = false) String keyword,
@@ -83,21 +74,12 @@ public class DimensionController {
       @RequestParam(value = "status", required = false) String status,
       @RequestParam(value = "publishedOnly", defaultValue = "false") boolean publishedOnly) {
     if (publishedOnly) {
-      List<DimensionDTO> data = dimensionService.list(true).stream()
-          .map(this::toDTO).toList();
-      return Response.success(new PageDTO<DimensionDTO>()
-          .setData(data)
-          .setTotal(data.size())
-          .setPage(1L)
-          .setSize((long) data.size()));
+      List<DimensionDTO> data = adapterConvert.toDimensionDTOListFromDetail(dimensionService.listDetail(true));
+      return Response.success(new Page<>(data, 1L, data.size(), data.size()));
     }
-    var result = dimensionService.page(page, size, keyword, folder, status);
-    List<DimensionDTO> records = result.getRecords().stream().map(this::toDTO).toList();
-    return Response.success(new PageDTO<DimensionDTO>()
-        .setData(records)
-        .setTotal(result.getTotal())
-        .setPage(result.getCurrent())
-        .setSize(result.getSize()));
+    var result = dimensionService.pageDetail(page, size, keyword, folder, status);
+    List<DimensionDTO> records = adapterConvert.toDimensionDTOListFromDetail(result.getData());
+    return Response.success(new Page<>(records, result.getCurrent(), result.getSize(), result.getTotal()));
   }
 
   @DeleteMapping("/{id}")
@@ -108,7 +90,7 @@ public class DimensionController {
 
   @PostMapping("/{id}/publish")
   public Response<DimensionDTO> publish(@PathVariable String id) {
-    return Response.success(toDTO(dimensionService.publish(id)));
+    return Response.success(adapterConvert.toDimensionDTO(dimensionService.publish(id)));
   }
 
   @PostMapping("/{id}/bindings")
@@ -128,45 +110,6 @@ public class DimensionController {
   public Response<Void> removeBinding(@PathVariable String bindingId) {
     dimensionService.removeBinding(bindingId);
     return Response.success();
-  }
-
-  private DimensionDTO toDTO(Dimension dimension) {
-    DimensionDTO dto = MetricAdapterConvert.INSTANCE.toDimensionDTO(dimension);
-    // 关联数据集
-    List<DimensionBinding> bindings = dimensionBindingRepository.listByDimension(dimension.getId());
-    List<String> datasets = bindings.stream()
-        .map(DimensionBinding::getDatasetId)
-        .distinct()
-        .collect(Collectors.toList());
-    // name 保持为全局唯一编码，dimName 为显示名，dimCode 为源字段名
-    dto.setName(dimension.getCode());
-    dto.setDimName(StringUtils.hasText(dimension.getBusinessName()) ? dimension.getBusinessName() : dimension.getName());
-    dto.setDimCode(extractFieldCode(dimension.getDsl()));
-    dto.setRelatedDatasets(datasets);
-    // 关联指标
-    var metricBindings = metricDimensionBindingRepository.listByDimensionId(dimension.getId());
-    List<String> metrics = metricBindings.stream()
-        .map(com.cyan.stargaze.metric.domain.metric.MetricDimensionBinding::getMetricId)
-        .distinct()
-        .collect(Collectors.toList());
-    dto.setRelatedMetrics(metrics);
-    dto.setRelatedMetricCount(metrics.size());
-    return dto;
-  }
-
-  private String extractFieldCode(String dslJson) {
-    if (!StringUtils.hasText(dslJson)) {
-      return null;
-    }
-    try {
-      com.alibaba.fastjson2.JSONObject obj = JSON.parseObject(dslJson);
-      com.alibaba.fastjson2.JSONObject expr = obj.getJSONObject("expr");
-      if (expr != null) {
-        return expr.getString("fieldCode");
-      }
-    } catch (Exception ignored) {
-    }
-    return null;
   }
 
 }

@@ -1,5 +1,7 @@
 package com.cyan.stargaze.metric.domain.metric;
 
+import com.cyan.arch.common.api.Assert;
+import com.cyan.arch.common.api.SilentException;
 import com.cyan.stargaze.metric.enums.MetricSourceType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -44,6 +46,12 @@ public class MetricDimensionBinding {
     /** 维度来源编码 */
     private String sourceCode;
 
+    /** 创建人 */
+    private String createdBy;
+
+    /** 修改人 */
+    private String updatedBy;
+
     /** 创建时间 */
     private OffsetDateTime createdAt;
 
@@ -52,4 +60,12 @@ public class MetricDimensionBinding {
 
     /** 逻辑删除时间 */
     private OffsetDateTime deletedAt;
+
+    /**
+     * 校验绑定合法性。
+     */
+    public void validate() {
+        Assert.notBlank(this.metricId, new SilentException("指标 ID 不能为空"));
+        Assert.notBlank(this.dimensionId, new SilentException("维度 ID 不能为空"));
+    }
 }

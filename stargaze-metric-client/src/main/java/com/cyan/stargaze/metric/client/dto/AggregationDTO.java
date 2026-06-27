@@ -5,10 +5,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
-import java.util.List;
-
 /**
- * 分页响应 DTO。
+ * 指标聚合方式(供 query 编译期使用)。
  *
  * @author cy.Y
  * @since 1.0.0
@@ -17,10 +15,8 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Accessors(chain = true)
-public class PageDTO<T> {
+public class AggregationDTO {
 
-    private List<T> data;
-    private long total;
-    private long page;
-    private long size;
+    /** 聚合编码:sum/avg/count/distinct_count/max/min/expr */
+    private String code;
 }
