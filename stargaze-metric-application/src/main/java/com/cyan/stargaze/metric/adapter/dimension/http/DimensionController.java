@@ -3,6 +3,8 @@ package com.cyan.stargaze.metric.adapter.dimension.http;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.alibaba.fastjson2.JSON;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -136,7 +138,10 @@ public class DimensionController {
         .map(DimensionBinding::getDatasetId)
         .distinct()
         .collect(Collectors.toList());
-    dto.setFieldName(bindings.isEmpty() ? dimension.getName() : bindings.get(0).getFieldId());
+    // name 保持为全局唯一编码，dimName 为显示名，dimCode 为源字段名
+    dto.setName(dimension.getCode());
+    dto.setDimName(StringUtils.hasText(dimension.getBusinessName()) ? dimension.getBusinessName() : dimension.getName());
+    dto.setDimCode(extractFieldCode(dimension.getDsl()));
     dto.setRelatedDatasets(datasets);
     // 关联指标
     var metricBindings = metricDimensionBindingRepository.listByDimensionId(dimension.getId());
@@ -147,6 +152,21 @@ public class DimensionController {
     dto.setRelatedMetrics(metrics);
     dto.setRelatedMetricCount(metrics.size());
     return dto;
+  }
+
+  private String extractFieldCode(String dslJson) {
+    if (!StringUtils.hasText(dslJson)) {
+      return null;
+    }
+    try {
+      com.alibaba.fastjson2.JSONObject obj = JSON.parseObject(dslJson);
+      com.alibaba.fastjson2.JSONObject expr = obj.getJSONObject("expr");
+      if (expr != null) {
+        return expr.getString("fieldCode");
+      }
+    } catch (Exception ignored) {
+    }
+    return null;
   }
 
 }

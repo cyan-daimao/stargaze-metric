@@ -29,11 +29,11 @@ public class DimensionDTO {
     /** 维度名 */
     private String name;
 
-    /** 业务名 */
-    private String businessName;
+    /** 维度显示名 */
+    private String dimName;
 
-    /** 字段名 */
-    private String fieldName;
+    /** 源字段编码 */
+    private String dimCode;
 
     /** 所属目录 */
     private String folder;
