@@ -202,8 +202,8 @@ public class MetricServiceImpl implements MetricService {
                         .setType(item.getSourceType())
                         .setDatasource(item.getDatasourceName())
                         .setFields(item.getFieldCount() == null ? 0 : item.getFieldCount())
-                        .setMetricCount(0)
-                        .setDimensionCount(0)
+                        .setMetricCount(item.getMeasureCount() == null ? 0 : item.getMeasureCount())
+                        .setDimensionCount(item.getDimensionCount() == null ? 0 : item.getDimensionCount())
                         .setStatus(item.getStatus())
                         .setUpdateTime(item.getUpdatedAt()))
                 .toList();
