@@ -17,11 +17,14 @@ import com.cyan.employee.login.filter.UserContextHolder;
 import com.cyan.stargaze.metric.adapter.MetricAdapterConvert;
 import com.cyan.stargaze.metric.adapter.metric.http.dto.MetricDetailDTO;
 import com.cyan.stargaze.metric.adapter.metric.http.dto.MetricListItemDTO;
+import com.cyan.stargaze.metric.adapter.metric.http.dto.SyncDatasetItemDTO;
 import com.cyan.stargaze.metric.application.metric.MetricService;
 import com.cyan.stargaze.metric.application.metric.cmd.MetricCmd;
 import com.cyan.stargaze.metric.client.dto.BindableSourceDTO;
 import com.cyan.stargaze.metric.client.dto.CheckNameResultDTO;
 import com.cyan.stargaze.metric.client.dto.MetricDTO;
+import com.cyan.stargaze.metric.client.dto.MetricSyncRequestDTO;
+import com.cyan.stargaze.metric.client.dto.MetricSyncResultDTO;
 import com.cyan.stargaze.metric.client.dto.PageDTO;
 import com.cyan.stargaze.metric.client.dto.PreviewRequestDTO;
 import com.cyan.stargaze.metric.client.dto.PreviewResponseDTO;
@@ -75,6 +78,20 @@ public class MetricController {
             return Response.success(List.of());
         }
         return Response.success(metricService.bindableSources(type));
+    }
+
+    @GetMapping("/sync-datasets")
+    public Response<PageDTO<SyncDatasetItemDTO>> syncDatasets(
+            @RequestParam(value = "page", defaultValue = "1") Integer page,
+            @RequestParam(value = "size", defaultValue = "20") Integer size,
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "type", required = false) String type) {
+        return Response.success(metricService.syncDatasets(page, size, keyword, type));
+    }
+
+    @PostMapping("/sync")
+    public Response<MetricSyncResultDTO> sync(@RequestBody @Valid MetricSyncRequestDTO request) {
+        return Response.success(metricService.sync(request));
     }
 
     @PostMapping

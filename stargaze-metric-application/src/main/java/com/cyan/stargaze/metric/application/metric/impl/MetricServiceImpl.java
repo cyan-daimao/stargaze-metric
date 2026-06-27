@@ -10,6 +10,7 @@ import com.cyan.arch.common.api.SilentException;
 import com.cyan.stargaze.dataset.client.DatasetClient;
 import com.cyan.stargaze.dataset.client.dto.DatasetListItemDTO;
 import com.cyan.stargaze.metric.adapter.MetricAdapterConvert;
+import com.cyan.stargaze.metric.adapter.metric.http.dto.SyncDatasetItemDTO;
 import com.cyan.stargaze.metric.application.MetricAppConvert;
 import com.cyan.stargaze.metric.application.metric.MetricService;
 import com.cyan.stargaze.metric.application.metric.cmd.MetricCmd;
@@ -18,6 +19,8 @@ import com.cyan.stargaze.metric.client.dto.BindableSourceDTO;
 import com.cyan.stargaze.metric.client.dto.CheckNameResultDTO;
 import com.cyan.stargaze.metric.client.dto.MetricDTO;
 import com.cyan.stargaze.metric.client.dto.MetricResolveDTO;
+import com.cyan.stargaze.metric.client.dto.MetricSyncRequestDTO;
+import com.cyan.stargaze.metric.client.dto.MetricSyncResultDTO;
 import com.cyan.stargaze.metric.client.dto.PageDTO;
 import com.cyan.stargaze.metric.client.dto.PreviewRequestDTO;
 import com.cyan.stargaze.metric.client.dto.PreviewResponseDTO;
@@ -179,6 +182,50 @@ public class MetricServiceImpl implements MetricService {
             return listBindableDatasets();
         }
         return defaultBindableSources(sourceType);
+    }
+
+    @Override
+    public PageDTO<SyncDatasetItemDTO> syncDatasets(Integer page, Integer size, String keyword, String type) {
+        int p = page == null || page < 1 ? 1 : page;
+        int s = size == null || size < 1 ? 20 : size;
+        Response<com.cyan.arch.common.api.Page<DatasetListItemDTO>> resp =
+                datasetClient.page(p, s, keyword, type, null);
+        if (resp == null || resp.getCode() != 200 || resp.getData() == null) {
+            return new PageDTO<SyncDatasetItemDTO>().setData(Collections.emptyList()).setTotal(0L).setPage(p).setSize(s);
+        }
+        com.cyan.arch.common.api.Page<DatasetListItemDTO> data = resp.getData();
+        List<SyncDatasetItemDTO> records = data.getData().stream()
+                .map(item -> new SyncDatasetItemDTO()
+                        .setId(item.getId())
+                        .setName(item.getName())
+                        .setCode(StringUtils.hasText(item.getName()) ? item.getName() : item.getId())
+                        .setType(item.getSourceType())
+                        .setDatasource(item.getDatasourceName())
+                        .setFields(item.getFieldCount() == null ? 0 : item.getFieldCount())
+                        .setMetricCount(0)
+                        .setDimensionCount(0)
+                        .setStatus(item.getStatus())
+                        .setUpdateTime(item.getUpdatedAt()))
+                .toList();
+        return new PageDTO<SyncDatasetItemDTO>()
+                .setData(records)
+                .setTotal(data.getTotal())
+                .setPage((int) data.getCurrent())
+                .setSize((int) data.getSize());
+    }
+
+    @Override
+    public MetricSyncResultDTO sync(MetricSyncRequestDTO request) {
+        String datasetId = request == null ? null : request.getDatasetId();
+        return new MetricSyncResultDTO()
+                .setDatasetId(datasetId)
+                .setCreated(0)
+                .setDimensionCreated(0)
+                .setDimensionBindingCreated(0)
+                .setDuplicates(Collections.emptyList())
+                .setDimensionDuplicates(Collections.emptyList())
+                .setMetrics(Collections.emptyList())
+                .setDimensions(Collections.emptyList());
     }
 
     @Override

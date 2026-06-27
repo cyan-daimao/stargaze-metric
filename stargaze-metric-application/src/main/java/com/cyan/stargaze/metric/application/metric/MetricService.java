@@ -5,6 +5,9 @@ import com.cyan.stargaze.metric.client.dto.BindableSourceDTO;
 import com.cyan.stargaze.metric.client.dto.CheckNameResultDTO;
 import com.cyan.stargaze.metric.client.dto.MetricDTO;
 import com.cyan.stargaze.metric.client.dto.MetricResolveDTO;
+import com.cyan.stargaze.metric.adapter.metric.http.dto.SyncDatasetItemDTO;
+import com.cyan.stargaze.metric.client.dto.MetricSyncRequestDTO;
+import com.cyan.stargaze.metric.client.dto.MetricSyncResultDTO;
 import com.cyan.stargaze.metric.client.dto.PageDTO;
 import com.cyan.stargaze.metric.client.dto.PreviewRequestDTO;
 import com.cyan.stargaze.metric.client.dto.PreviewResponseDTO;
@@ -49,6 +52,12 @@ public interface MetricService {
 
     /** 批量解析指标 AST */
     List<MetricResolveDTO> resolveBatch(ResolveBatchRequestDTO request);
+
+    /** 一键同步:查询可选数据集列表 */
+    PageDTO<SyncDatasetItemDTO> syncDatasets(Integer page, Integer size, String keyword, String type);
+
+    /** 一键同步:执行同步 */
+    MetricSyncResultDTO sync(MetricSyncRequestDTO request);
 
     /** 校验指标×维度组合合法性 */
     ValidationResultDTO validate(List<String> metricCodes, List<String> dimCodes);
