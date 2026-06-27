@@ -55,6 +55,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -75,6 +76,16 @@ public class MetricServiceImpl implements MetricService {
     private final DimensionBindingRepository dimensionBindingRepository;
     private final MetricAppConvert appConvert;
     private final DatasetClient datasetClient;
+
+    /** 数据集物理表中需要排除的系统字段(不应同步为指标或维度) */
+    private static final Set<String> SYSTEM_FIELD_NAMES = Set.of(
+            "id", "deleted_at", "created_at", "updated_at", "created_by", "updated_by", "dt"
+    );
+
+    /** 判断是否为系统字段 */
+    private static boolean isSystemField(String fieldName) {
+        return fieldName != null && SYSTEM_FIELD_NAMES.contains(fieldName.toLowerCase());
+    }
 
     @Override
     @Transactional
@@ -220,6 +231,10 @@ public class MetricServiceImpl implements MetricService {
 
         for (DatasetFieldDTO field : fields) {
             if (field == null || field.getFieldType() == null) {
+                continue;
+            }
+            // 排除系统字段(如 deleted_at / created_at / id 等)
+            if (isSystemField(field.getFieldName())) {
                 continue;
             }
             if (field.getFieldType() == FieldType.MEASURE) {

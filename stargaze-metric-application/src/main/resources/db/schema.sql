@@ -156,6 +156,8 @@ CREATE TABLE metric_dimension_binding (
     dimension_name  VARCHAR(128)    NOT NULL,              -- 冗余,便于展示
     source_type     VARCHAR(32),                           -- 维度来源类型
     source_code     VARCHAR(128),                          -- 维度来源编码
+    created_by      VARCHAR(64),
+    updated_by      VARCHAR(64),
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),
     deleted_at      TIMESTAMPTZ
@@ -174,6 +176,8 @@ CREATE TABLE metric_dimension_compat (
     metric_id       BIGINT      NOT NULL,
     dimension_id    BIGINT      NOT NULL,
     allowed         BOOLEAN     NOT NULL DEFAULT TRUE,
+    created_by      VARCHAR(64),
+    updated_by      VARCHAR(64),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     deleted_at      TIMESTAMPTZ,
@@ -197,6 +201,7 @@ CREATE TABLE metric_version (
     source_snapshot TEXT,
     change_log TEXT,
     created_by VARCHAR(64),
+    updated_by VARCHAR(64),
     created_at TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ  NOT NULL DEFAULT now(),
     deleted_at TIMESTAMPTZ
@@ -217,6 +222,8 @@ CREATE TABLE dimension_binding (
     dataset_id    BIGINT   NOT NULL,
     field_id      BIGINT   NOT NULL,
     expr          TEXT,                               -- 维度计算表达式(可空)
+    created_by    VARCHAR(64),
+    updated_by    VARCHAR(64),
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     deleted_at    TIMESTAMPTZ

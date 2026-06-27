@@ -330,7 +330,8 @@ public class Metric {
             sql.append("SELECT ").append(func.toUpperCase())
                     .append("(CAST(").append(fieldCode).append(" AS DECIMAL(18,2))) AS ").append(metricCode)
                     .append(" FROM ").append(this.sourceCode);
-            List<String> clauses = new ArrayList<>(filterClauses());
+            // TODO: 后续根据维度绑定/筛选条件补充 WHERE 子句
+            List<String> clauses = new ArrayList<>();
             clauses.add("dt = ${bizDate}");
             sql.append(" WHERE ").append(String.join(" AND ", clauses));
         }
