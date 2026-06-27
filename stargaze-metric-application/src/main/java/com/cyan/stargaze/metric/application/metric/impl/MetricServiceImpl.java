@@ -751,8 +751,9 @@ public class MetricServiceImpl implements MetricService {
                                                               DatasetFieldDTO field,
                                                               String operator,
                                                               List<MetricDTO> createdMetrics) {
-        String metricCode = generateCode(datasetCode, field.getFieldName());
+        String metricCode = field.getFieldName();
         String metricName = field.getDisplayName();
+        String uniqueCode = generateCode(datasetCode, field.getFieldName());
 
         Metric existingName = metricRepository.findByName(metricName);
         if (existingName != null) {
@@ -761,7 +762,14 @@ public class MetricServiceImpl implements MetricService {
                     .setExistingName(existingName.getName())
                     .setExistingId(existingName.getId());
         }
-        Metric existingCode = metricRepository.findByCode(metricCode);
+        Metric existingMetricCode = metricRepository.findByMetricCode(metricCode);
+        if (existingMetricCode != null) {
+            return new MetricSyncResultDTO.DuplicateMetricDTO()
+                    .setNewName(metricName)
+                    .setExistingName(existingMetricCode.getName())
+                    .setExistingId(existingMetricCode.getId());
+        }
+        Metric existingCode = metricRepository.findByCode(uniqueCode);
         if (existingCode != null) {
             return new MetricSyncResultDTO.DuplicateMetricDTO()
                     .setNewName(metricName)
@@ -773,7 +781,7 @@ public class MetricServiceImpl implements MetricService {
         Metric metric = new Metric()
                 .setMetricCode(metricCode)
                 .setName(metricName)
-                .setCode(metricCode)
+                .setCode(uniqueCode)
                 .setDescription("从数据集 " + datasetDisplayName + " 同步生成")
                 .setSourceType(MetricSourceType.DATASET)
                 .setSourceCode(datasetCode)
@@ -836,8 +844,9 @@ public class MetricServiceImpl implements MetricService {
     private DimensionDTO toDimensionDTO(Dimension dimension) {
         return new DimensionDTO()
                 .setId(dimension.getId())
-                .setName(dimension.getName())
-                .setBusinessName(dimension.getBusinessName())
+                .setName(dimension.getCode())
+                .setDimName(StringUtils.hasText(dimension.getBusinessName()) ? dimension.getBusinessName() : dimension.getName())
+                .setDimCode(extractFieldCode(dimension.getDsl()))
                 .setFolder(dimension.getFolder())
                 .setSemanticType(dimension.getSemanticType())
                 .setDictionaryId(dimension.getDictionaryId())
@@ -846,6 +855,21 @@ public class MetricServiceImpl implements MetricService {
                 .setCreatedBy(dimension.getCreatedBy())
                 .setCreatedAt(dimension.getCreatedAt())
                 .setUpdatedAt(dimension.getUpdatedAt());
+    }
+
+    private String extractFieldCode(String dslJson) {
+        if (!StringUtils.hasText(dslJson)) {
+            return null;
+        }
+        try {
+            JSONObject obj = JSON.parseObject(dslJson);
+            JSONObject expr = obj.getJSONObject("expr");
+            if (expr != null) {
+                return expr.getString("fieldCode");
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 
     private String generateCode(String prefix, String fieldName) {

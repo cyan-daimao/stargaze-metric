@@ -26,11 +26,11 @@ public class DimensionDTO {
     /** 主键 */
     private String id;
 
-    /** 维度名 */
+    /** 维度全局唯一编码 */
     private String name;
 
-    /** 业务名 */
-    private String businessName;
+    /** 维度显示名 */
+    private String dimName;
 
     /** 语义类型 */
     private SemanticType semanticType;
@@ -44,8 +44,8 @@ public class DimensionDTO {
     /** 状态 */
     private MetricStatus status;
 
-    /** 字段名 */
-    private String fieldName;
+    /** 源字段编码 */
+    private String dimCode;
 
     /** 所属目录 */
     private String folder;
