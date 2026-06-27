@@ -25,6 +25,8 @@
         <arch.version>1.0-SNAPSHOT</arch.version>
         <cyan-employee-login.version>1.0-SNAPSHOT</cyan-employee-login.version>
         <stargaze-dataset-client.version>1.0-SNAPSHOT</stargaze-dataset-client.version>
+        <stargaze-query-client.version>1.0-SNAPSHOT</stargaze-query-client.version>
+        <stargaze-permission-client.version>1.0-SNAPSHOT</stargaze-permission-client.version>
         <postgresql.version>42.7.4</postgresql.version>
         <fastjson2.version>2.0.52</fastjson2.version>
         <mybatis-plus.version>3.5.7</mybatis-plus.version>
@@ -58,6 +60,16 @@
                 <groupId>com.cyan</groupId>
                 <artifactId>stargaze-metric-client</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cyan</groupId>
+                <artifactId>stargaze-query-client</artifactId>
+                <version>${stargaze-query-client.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cyan</groupId>
+                <artifactId>stargaze-permission-client</artifactId>
+                <version>${stargaze-permission-client.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.baomidou</groupId>
