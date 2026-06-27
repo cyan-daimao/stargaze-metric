@@ -79,4 +79,18 @@ public class DimensionRepositoryImpl implements DimensionRepository {
     public void deleteById(String id) {
         mapper.deleteById(IdUtil.toLong(id));
     }
+
+    @Override
+    public List<String> listDistinctFolders() {
+        LambdaQueryWrapper<DimensionDO> wrapper = new LambdaQueryWrapper<DimensionDO>()
+                .select(DimensionDO::getFolder)
+                .isNotNull(DimensionDO::getFolder)
+                .ne(DimensionDO::getFolder, "")
+                .groupBy(DimensionDO::getFolder)
+                .orderByAsc(DimensionDO::getFolder);
+        return mapper.selectList(wrapper).stream()
+                .map(DimensionDO::getFolder)
+                .distinct()
+                .toList();
+    }
 }

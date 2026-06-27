@@ -28,6 +28,7 @@ import com.cyan.stargaze.metric.client.dto.MetricDTO;
 import com.cyan.stargaze.metric.client.dto.MetricDimensionRefDTO;
 import com.cyan.stargaze.metric.client.dto.MetricSyncResultDTO;
 import com.cyan.stargaze.metric.client.dto.PageDTO;
+import com.cyan.stargaze.metric.domain.metric.repository.MetricRepository;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ import lombok.RequiredArgsConstructor;
 public class MetricController {
 
   private final MetricService metricService;
+  private final MetricRepository metricRepository;
 
   @PostMapping
   public Response<MetricDTO> create(@RequestBody @Valid MetricCmd cmd) {
@@ -97,6 +99,12 @@ public class MetricController {
   @PostMapping("/{id}/offline")
   public Response<MetricDTO> offline(@PathVariable String id) {
     return Response.success(metricService.offline(id));
+  }
+
+  // ---- 目录 ----
+  @GetMapping("/folders")
+  public Response<List<String>> listFolders() {
+    return Response.success(metricRepository.listDistinctFolders());
   }
 
   // ---- 校验 ----

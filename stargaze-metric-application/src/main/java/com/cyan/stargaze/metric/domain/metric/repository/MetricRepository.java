@@ -29,4 +29,7 @@ public interface MetricRepository {
     Metric update(Metric metric);
 
     void deleteById(String id);
+
+    /** 列出所有不重复的目录名 */
+    List<String> listDistinctFolders();
 }

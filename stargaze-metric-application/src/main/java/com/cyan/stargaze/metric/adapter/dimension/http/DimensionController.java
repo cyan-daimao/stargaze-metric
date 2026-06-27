@@ -25,6 +25,7 @@ import com.cyan.stargaze.metric.client.dto.PageDTO;
 import com.cyan.stargaze.metric.domain.dimension.Dimension;
 import com.cyan.stargaze.metric.domain.dimension.DimensionBinding;
 import com.cyan.stargaze.metric.domain.dimension.repository.DimensionBindingRepository;
+import com.cyan.stargaze.metric.domain.dimension.repository.DimensionRepository;
 import com.cyan.stargaze.metric.domain.metric.repository.MetricDimensionBindingRepository;
 
 import jakarta.validation.Valid;
@@ -42,8 +43,16 @@ import lombok.RequiredArgsConstructor;
 public class DimensionController {
 
   private final DimensionService dimensionService;
+  private final DimensionRepository dimensionRepository;
   private final DimensionBindingRepository dimensionBindingRepository;
   private final MetricDimensionBindingRepository metricDimensionBindingRepository;
+
+  // ---- 目录 ----
+
+  @GetMapping("/folders")
+  public Response<List<String>> listFolders() {
+    return Response.success(dimensionRepository.listDistinctFolders());
+  }
 
   @PostMapping
   public Response<DimensionDTO> create(@RequestBody @Valid DimensionCmd cmd) {

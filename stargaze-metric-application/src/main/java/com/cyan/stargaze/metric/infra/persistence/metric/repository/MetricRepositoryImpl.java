@@ -86,4 +86,18 @@ public class MetricRepositoryImpl implements MetricRepository {
     public void deleteById(String id) {
         mapper.deleteById(IdUtil.toLong(id));
     }
+
+    @Override
+    public List<String> listDistinctFolders() {
+        LambdaQueryWrapper<MetricDO> wrapper = new LambdaQueryWrapper<MetricDO>()
+                .select(MetricDO::getFolder)
+                .isNotNull(MetricDO::getFolder)
+                .ne(MetricDO::getFolder, "")
+                .groupBy(MetricDO::getFolder)
+                .orderByAsc(MetricDO::getFolder);
+        return mapper.selectList(wrapper).stream()
+                .map(MetricDO::getFolder)
+                .distinct()
+                .toList();
+    }
 }
