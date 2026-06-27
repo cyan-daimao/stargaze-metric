@@ -23,6 +23,11 @@
             <groupId>com.cyan</groupId>
             <artifactId>stargaze-dataset-client</artifactId>
         </dependency>
+        <!-- 跨服务调用 query 执行预览 SQL -->
+        <dependency>
+            <groupId>com.cyan</groupId>
+            <artifactId>stargaze-query-client</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.cyan</groupId>
             <artifactId>arch-base</artifactId>

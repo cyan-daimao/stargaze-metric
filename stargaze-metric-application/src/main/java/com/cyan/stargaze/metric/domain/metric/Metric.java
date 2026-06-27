@@ -21,6 +21,8 @@ import lombok.experimental.Accessors;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
+import java.util.Collections;
+import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -292,15 +294,29 @@ public class Metric {
      * 构造单指标预览 SQL。
      */
     public String previewSql(String bizDate) {
+        return previewSql(bizDate, Collections.emptyList());
+    }
+
+    /**
+     * 构造带维度分组的预览 SQL。
+     *
+     * @param bizDate   业务日期(可空)
+     * @param dimFields 维度字段名列表(同源)
+     */
+    public String previewSql(String bizDate, List<String> dimFields) {
         String date = isBlank(bizDate) ? "latest" : bizDate;
         String metricCode = this.metricCode;
+        List<String> dims = dimFields != null ? dimFields : Collections.emptyList();
         StringBuilder sql = new StringBuilder();
+
+        // SELECT 子句: 维度字段 + 聚合指标
+        sql.append("SELECT ");
+        if (!dims.isEmpty()) {
+            sql.append(String.join(", ", dims)).append(", ");
+        }
+
         if (this.sourceType == MetricSourceType.PORTRAIT_FEATURE) {
-            String featureCode = dslField("source", "featureCode");
-            if (isBlank(featureCode)) {
-                featureCode = this.sourceCode;
-            }
-            sql.append("SELECT SUM(CAST(feature_value_decimal AS DECIMAL(18,2))) AS ").append(metricCode)
+            sql.append("SUM(CAST(feature_value_decimal AS DECIMAL(18,2))) AS ").append(metricCode)
                     .append(" FROM portrait_feature_value_store");
         } else if (this.sourceType == MetricSourceType.REALTIME_TABLE) {
             String func = dslField("expr", "func");
@@ -311,7 +327,7 @@ public class Metric {
             if (isBlank(fieldCode)) {
                 fieldCode = "value";
             }
-            sql.append("SELECT ").append(func.toUpperCase())
+            sql.append(func.toUpperCase())
                     .append("(").append(fieldCode).append(") AS ").append(metricCode)
                     .append(" FROM ").append(this.sourceCode);
         } else {
@@ -323,10 +339,16 @@ public class Metric {
             if (isBlank(fieldCode)) {
                 fieldCode = "value";
             }
-            sql.append("SELECT ").append(func.toUpperCase())
+            sql.append(func.toUpperCase())
                     .append("(CAST(").append(fieldCode).append(" AS DECIMAL(18,2))) AS ").append(metricCode)
                     .append(" FROM ").append(this.sourceCode);
         }
+
+        // GROUP BY
+        if (!dims.isEmpty()) {
+            sql.append(" GROUP BY ").append(String.join(", ", dims));
+        }
+
         sql.append("\n-- bizDate=").append(date);
         return sql.toString();
     }

@@ -10,6 +10,9 @@ import com.cyan.stargaze.dataset.client.DatasetClient;
 import com.cyan.stargaze.dataset.client.dto.DatasetFieldDTO;
 import com.cyan.stargaze.dataset.client.dto.DatasetListItemDTO;
 import com.cyan.stargaze.dataset.enums.FieldType;
+import com.cyan.stargaze.query.client.QueryClient;
+import com.cyan.stargaze.query.client.dto.QueryPreviewRequest;
+import com.cyan.stargaze.query.client.dto.QueryResult;
 import com.cyan.stargaze.metric.application.MetricAppConvert;
 import com.cyan.stargaze.metric.application.metric.MetricService;
 import com.cyan.stargaze.metric.application.metric.bo.MetricBO;
@@ -76,6 +79,7 @@ public class MetricServiceImpl implements MetricService {
     private final DimensionBindingRepository dimensionBindingRepository;
     private final MetricAppConvert appConvert;
     private final DatasetClient datasetClient;
+    private final QueryClient queryClient;
 
     /** 数据集物理表中需要排除的系统字段(不应同步为指标或维度) */
     private static final Set<String> SYSTEM_FIELD_NAMES = Set.of(
@@ -85,6 +89,21 @@ public class MetricServiceImpl implements MetricService {
     /** 判断是否为系统字段 */
     private static boolean isSystemField(String fieldName) {
         return fieldName != null && SYSTEM_FIELD_NAMES.contains(fieldName.toLowerCase());
+    }
+
+    /**
+     * 解析指标绑定的维度字段码列表(用于预览 SQL 的 GROUP BY)。
+     */
+    private List<String> resolveDimensionFields(String metricId) {
+        return metricDimensionBindingRepository.listByMetric(metricId).stream()
+                .filter(b -> StringUtils.hasText(b.getDimensionId()))
+                .map(b -> {
+                    Dimension dim = dimensionRepository.findById(b.getDimensionId());
+                    return dim != null ? dim.extractFieldCode() : null;
+                })
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toList();
     }
 
     @Override
@@ -162,20 +181,56 @@ public class MetricServiceImpl implements MetricService {
         Metric metric = loadMetric(metricCode);
         Assert.isTrue(metric.isAvailable(), new SilentException("指标当前状态不可预览"));
         long start = System.currentTimeMillis();
+
+        List<String> dimFields = resolveDimensionFields(metric.getId());
+
         PreviewResponseDTO response = new PreviewResponseDTO()
                 .setMetricCode(metric.getMetricCode())
-                .setMetricName(metric.getName())
-                .setValue(0.0)
-                .setElapsedMs(System.currentTimeMillis() - start);
+                .setMetricName(metric.getName());
+
         if (metric.getSourceType() == MetricSourceType.HTTP_API) {
             response.setPlanType("ApiLookupPlan")
                     .setApiLookupPlan(metric.apiLookupPlan())
+                    .setValue(0.0)
                     .setFormattedValue(metric.formatValue(0.0));
         } else {
-            response.setPlanType("SqlPlan")
-                    .setSql(metric.previewSql(request == null ? null : request.getBizDate()))
-                    .setFormattedValue(metric.formatValue(0.0));
+            String sql = metric.previewSql(request == null ? null : request.getBizDate(), dimFields);
+            response.setPlanType("SqlPlan").setSql(sql);
+
+            // 通过 query 网关执行预览 SQL
+            if (metric.getSourceType() == MetricSourceType.DATASET) {
+                try {
+                    QueryPreviewRequest qReq = new QueryPreviewRequest()
+                            .setMetricCode(metricCode)
+                            .setTableName(metric.getSourceCode())
+                            .setDimensionFields(dimFields)
+                            .setLimit(5);
+                    Response<QueryResult> qResp = queryClient.preview(qReq);
+                    if (qResp != null && qResp.getCode() == 200 && qResp.getData() != null) {
+                        QueryResult data = qResp.getData();
+                        response.setColumns(data.getColumns())
+                                .setRows(data.getRows())
+                                .setExecutionTime(data.getCostMs() != null ? data.getCostMs() / 1000.0 : null);
+                        // 提取首行末尾列(聚合结果)作为单值
+                        if (data.getColumns() != null && !data.getColumns().isEmpty()
+                                && data.getRows() != null && !data.getRows().isEmpty()) {
+                            String lastCol = data.getColumns().get(data.getColumns().size() - 1);
+                            Object firstVal = data.getRows().get(0).get(lastCol);
+                            if (firstVal instanceof Number num) {
+                                response.setValue(num.doubleValue());
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("预览 SQL 执行失败 metricCode={}", metricCode, e);
+                }
+            }
+            if (response.getValue() == null) {
+                response.setValue(0.0);
+            }
+            response.setFormattedValue(metric.formatValue(response.getValue()));
         }
+        response.setElapsedMs(System.currentTimeMillis() - start);
         return response;
     }
 
@@ -391,7 +446,7 @@ public class MetricServiceImpl implements MetricService {
         if (metric.getSourceType() == MetricSourceType.HTTP_API) {
             bo.setApiLookupPlan(JSON.toJSONString(metric.apiLookupPlan()));
         } else {
-            bo.setSqlPreview(metric.previewSql("latest"));
+            bo.setSqlPreview(metric.previewSql("latest", resolveDimensionFields(metric.getId())));
         }
         return bo;
     }
