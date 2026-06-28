@@ -154,7 +154,6 @@ public class DimensionServiceImpl implements DimensionService {
     public DimensionPreviewResponseDTO preview(String id) {
         long start = System.currentTimeMillis();
         Dimension dimension = findById(id);
-        Assert.isTrue(dimension.isPublished(), new SilentException("仅已发布维度可预览"));
 
         // 取第一个绑定获取 datasetId 和 fieldId
         List<DimensionBinding> bindings = dimensionBindingRepository.listByDimension(id);
