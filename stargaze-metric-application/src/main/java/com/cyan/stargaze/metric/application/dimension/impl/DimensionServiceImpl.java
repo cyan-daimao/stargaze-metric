@@ -7,6 +7,10 @@ import com.cyan.arch.common.api.Page;
 import com.cyan.arch.common.api.SilentException;
 import com.cyan.stargaze.dataset.client.DatasetClient;
 import com.cyan.stargaze.metric.application.MetricAppConvert;
+import com.cyan.stargaze.metric.client.dto.DimensionPreviewResponseDTO;
+import com.cyan.stargaze.query.client.QueryClient;
+import com.cyan.stargaze.query.client.dto.DimensionQueryRequest;
+import com.cyan.stargaze.query.client.dto.QueryResult;
 import com.cyan.stargaze.metric.application.dimension.DimensionService;
 import com.cyan.stargaze.metric.application.dimension.bo.DimensionDetailBO;
 import com.cyan.stargaze.metric.application.dimension.cmd.DimensionBindingCmd;
@@ -40,6 +44,7 @@ public class DimensionServiceImpl implements DimensionService {
     private final MetricDimensionBindingRepository metricDimensionBindingRepository;
     private final MetricAppConvert convert;
     private final DatasetClient datasetClient;
+    private final QueryClient queryClient;
 
     @Override
     @Transactional
@@ -143,6 +148,52 @@ public class DimensionServiceImpl implements DimensionService {
     @Override
     public List<String> listFolders() {
         return dimensionRepository.listDistinctFolders();
+    }
+
+    @Override
+    public DimensionPreviewResponseDTO preview(String id) {
+        long start = System.currentTimeMillis();
+        Dimension dimension = findById(id);
+        Assert.isTrue(dimension.isPublished(), new SilentException("仅已发布维度可预览"));
+
+        // 取第一个绑定获取 datasetId 和 fieldId
+        List<DimensionBinding> bindings = dimensionBindingRepository.listByDimension(id);
+        Assert.isTrue(bindings != null && !bindings.isEmpty(), new SilentException("维度未绑定数据集字段"));
+
+        DimensionBinding binding = bindings.get(0);
+        String datasetId = binding.getDatasetId();
+        String fieldId = binding.getFieldId();
+
+        // 解析字段获取物理列名
+        var resolveResp = datasetClient.resolveField(datasetId, fieldId);
+        Assert.notNull(resolveResp, new SilentException("字段解析失败:无响应"));
+        Assert.isTrue(resolveResp.getCode() == 200 && resolveResp.getData() != null,
+                new SilentException("字段解析失败:" + resolveResp.getMessage()));
+        String fieldName = resolveResp.getData().getOriginName();
+        String dimName = org.springframework.util.StringUtils.hasText(dimension.getBusinessName())
+                ? dimension.getBusinessName() : dimension.getName();
+
+        // 构造 SQL 以供展示
+        String previewSql = dimension.previewSql(datasetId, fieldName);
+
+        // 调用 query 服务执行
+        DimensionQueryRequest qReq = new DimensionQueryRequest()
+                .setDatasetId(datasetId)
+                .setFieldCode(fieldName)
+                .setLimit(100);
+        var qResp = queryClient.dimensionPreview(qReq);
+        Assert.isTrue(qResp != null && qResp.getCode() == 200 && qResp.getData() != null,
+                new SilentException("维度预览查询失败: " + (qResp == null ? "无响应" : qResp.getMessage())));
+
+        QueryResult data = qResp.getData();
+        return new DimensionPreviewResponseDTO()
+                .setDimensionCode(dimension.getCode())
+                .setDimensionName(dimName)
+                .setSql(previewSql)
+                .setColumns(data.getColumns())
+                .setRows(data.getRows())
+                .setExecutionTime(data.getCostMs() != null ? data.getCostMs() / 1000.0 : null)
+                .setElapsedMs(System.currentTimeMillis() - start);
     }
 
     private DimensionDetailBO buildDetail(Dimension dimension) {

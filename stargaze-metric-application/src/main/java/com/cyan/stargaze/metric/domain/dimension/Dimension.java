@@ -183,6 +183,39 @@ public class Dimension {
     }
 
     /**
+     * 从维度 DSL 中提取源数据集编码。
+     */
+    public String extractDatasetCode() {
+        if (isBlank(this.dsl)) {
+            return null;
+        }
+        try {
+            JSONObject obj = JSON.parseObject(this.dsl);
+            JSONObject source = obj.getJSONObject("source");
+            if (source != null) {
+                return source.getString("datasetCode");
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
+    /**
+     * 生成维度预览 SQL(分组统计维度值)。
+     *
+     * @param sourceCode 数据集编码(用于 FROM 子句)
+     * @param fieldCode  维度字段编码
+     * @return 预览 SQL
+     */
+    public String previewSql(String sourceCode, String fieldCode) {
+        return "SELECT " + fieldCode + ", COUNT(1) AS cnt"
+                + " FROM " + sourceCode
+                + " GROUP BY " + fieldCode
+                + " ORDER BY cnt DESC"
+                + " LIMIT 100";
+    }
+
+    /**
      * 根据数据集字段构造维度字段 DSL。
      */
     public static String buildFieldDsl(String datasetCode, DatasetFieldDTO field) {

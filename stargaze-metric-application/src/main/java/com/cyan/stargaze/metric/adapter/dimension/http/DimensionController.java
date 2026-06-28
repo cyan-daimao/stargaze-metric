@@ -19,6 +19,7 @@ import com.cyan.stargaze.metric.adapter.MetricAdapterConvert;
 import com.cyan.stargaze.metric.adapter.dimension.http.dto.DimensionBindingDTO;
 import com.cyan.stargaze.metric.adapter.dimension.http.dto.DimensionDTO;
 import com.cyan.stargaze.metric.application.dimension.DimensionService;
+import com.cyan.stargaze.metric.client.dto.DimensionPreviewResponseDTO;
 import com.cyan.stargaze.metric.application.dimension.cmd.DimensionBindingCmd;
 import com.cyan.stargaze.metric.application.dimension.cmd.DimensionCmd;
 import com.cyan.stargaze.metric.domain.dimension.DimensionBinding;
@@ -110,6 +111,11 @@ public class DimensionController {
   public Response<Void> removeBinding(@PathVariable String bindingId) {
     dimensionService.removeBinding(bindingId);
     return Response.success();
+  }
+
+  @PostMapping("/{id}/preview")
+  public Response<DimensionPreviewResponseDTO> preview(@PathVariable String id) {
+    return Response.success(dimensionService.preview(id));
   }
 
 }

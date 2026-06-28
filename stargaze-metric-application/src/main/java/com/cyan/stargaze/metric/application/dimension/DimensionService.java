@@ -4,6 +4,7 @@ import com.cyan.arch.common.api.Page;
 import com.cyan.stargaze.metric.application.dimension.bo.DimensionDetailBO;
 import com.cyan.stargaze.metric.application.dimension.cmd.DimensionBindingCmd;
 import com.cyan.stargaze.metric.application.dimension.cmd.DimensionCmd;
+import com.cyan.stargaze.metric.client.dto.DimensionPreviewResponseDTO;
 import com.cyan.stargaze.metric.domain.dimension.Dimension;
 import com.cyan.stargaze.metric.domain.dimension.DimensionBinding;
 
@@ -54,4 +55,12 @@ public interface DimensionService {
 
     /** 列出所有不重复的目录名 */
     List<String> listFolders();
+
+    /**
+     * 维度预览(分组统计维度值,返回 SQL + 列名 + 数据行)。
+     *
+     * @param id 维度 ID
+     * @return 预览结果
+     */
+    DimensionPreviewResponseDTO preview(String id);
 }
