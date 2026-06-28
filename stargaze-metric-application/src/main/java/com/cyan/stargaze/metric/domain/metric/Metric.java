@@ -143,11 +143,10 @@ public class Metric {
     }
 
     /**
-     * 更新(仅 draft 可改核心口径)
+     * 更新(任意状态可改核心口径,含已发布;改后保持原状态)
      */
     public Metric update(MetricRepository repository) {
         Assert.notBlank(this.id, new SilentException("指标 ID 不能为空"));
-        Assert.isTrue(this.status == MetricStatus.DRAFT, new SilentException("仅草稿指标可直接修改"));
         validate();
         Metric existingName = repository.findByName(this.name);
         Assert.isTrue(existingName == null || existingName.getId().equals(this.id),
