@@ -9,8 +9,8 @@ import com.cyan.stargaze.dataset.client.DatasetClient;
 import com.cyan.stargaze.metric.application.MetricAppConvert;
 import com.cyan.stargaze.metric.client.dto.DimensionPreviewResponseDTO;
 import com.cyan.stargaze.query.client.QueryClient;
-import com.cyan.stargaze.query.client.dto.DimensionQueryRequest;
 import com.cyan.stargaze.query.client.dto.QueryResult;
+import com.cyan.stargaze.query.client.dto.SimpleQueryRequest;
 import com.cyan.stargaze.metric.application.dimension.DimensionService;
 import com.cyan.stargaze.metric.application.dimension.bo.DimensionDetailBO;
 import com.cyan.stargaze.metric.application.dimension.cmd.DimensionBindingCmd;
@@ -173,15 +173,25 @@ public class DimensionServiceImpl implements DimensionService {
         String dimName = org.springframework.util.StringUtils.hasText(dimension.getBusinessName())
                 ? dimension.getBusinessName() : dimension.getName();
 
-        // 构造 SQL 以供展示
-        String previewSql = dimension.previewSql(datasetId, fieldName);
+        // 解析查询路由(获取物理表引用 + catalog + database)
+        var routeResp = datasetClient.queryRoute(datasetId);
+        Assert.notNull(routeResp, new SilentException("查询路由解析失败:无响应"));
+        Assert.isTrue(routeResp.getCode() == 200 && routeResp.getData() != null,
+                new SilentException("查询路由解析失败:" + routeResp.getMessage()));
+        String tableRef = routeResp.getData().getTableRef();
+        String catalogName = routeResp.getData().getCatalogName();
+        String databaseName = routeResp.getData().getDatabaseName();
 
-        // 调用 query 服务执行
-        DimensionQueryRequest qReq = new DimensionQueryRequest()
-                .setDatasetId(datasetId)
-                .setFieldCode(fieldName)
-                .setLimit(100);
-        var qResp = queryClient.dimensionPreview(qReq);
+        // 构造 SQL: SELECT field, COUNT(1) AS cnt FROM table GROUP BY field ORDER BY cnt DESC LIMIT 100
+        String previewSql = "SELECT " + fieldName + ", COUNT(1) AS cnt"
+                + " FROM " + tableRef
+                + " GROUP BY " + fieldName
+                + " ORDER BY cnt DESC"
+                + " LIMIT 100";
+
+        // 调用 query 网关执行裸 SQL(不携带业务语义)
+        var qResp = queryClient.execute(
+                new SimpleQueryRequest().setSql(previewSql).setCatalogName(catalogName).setDatabaseName(databaseName));
         Assert.isTrue(qResp != null && qResp.getCode() == 200 && qResp.getData() != null,
                 new SilentException("维度预览查询失败: " + (qResp == null ? "无响应" : qResp.getMessage())));
 
