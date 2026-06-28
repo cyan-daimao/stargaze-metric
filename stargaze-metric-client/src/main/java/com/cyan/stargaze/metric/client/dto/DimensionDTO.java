@@ -1,6 +1,7 @@
 package com.cyan.stargaze.metric.client.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.cyan.stargaze.metric.enums.MetricSourceType;
 import com.cyan.stargaze.metric.enums.MetricStatus;
 import com.cyan.stargaze.metric.enums.SemanticType;
 import lombok.AllArgsConstructor;
@@ -32,6 +33,9 @@ public class DimensionDTO {
     /** 维度显示名 */
     private String dimName;
 
+    /** 维度描述 */
+    private String description;
+
     /** 语义类型 */
     private SemanticType semanticType;
 
@@ -43,6 +47,12 @@ public class DimensionDTO {
 
     /** 状态 */
     private MetricStatus status;
+
+    /** 来源类型 */
+    private MetricSourceType sourceType;
+
+    /** 来源类型展示标签,如"数据集"、"画像平台" */
+    private String sourceTypeLabel;
 
     /** 源字段编码 */
     private String dimCode;

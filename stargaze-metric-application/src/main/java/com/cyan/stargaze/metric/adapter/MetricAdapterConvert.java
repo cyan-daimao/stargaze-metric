@@ -194,10 +194,24 @@ public interface MetricAdapterConvert {
         dto.setDictionaryId(dimension.getDictionaryId());
         dto.setFormat(dimension.getFormat());
         dto.setStatus(dimension.getStatus());
+        dto.setSourceType(dimension.getSourceType());
+        dto.setSourceTypeLabel(dimension.sourceTypeLabel());
+        dto.setDescription(dimension.getDescription());
         dto.setCreatedBy(dimension.getCreatedBy());
         dto.setCreatedAt(dimension.getCreatedAt());
         dto.setUpdatedAt(dimension.getUpdatedAt());
         return dto;
+    }
+
+    /**
+     * Dimension 列表 -> 客户端契约维度 DTO 列表(已发布维度目录)。
+     */
+    default java.util.List<com.cyan.stargaze.metric.client.dto.DimensionDTO> toClientDimensionDTOList(
+            java.util.List<Dimension> dimensions) {
+        if (dimensions == null) {
+            return java.util.List.of();
+        }
+        return dimensions.stream().map(this::toClientDimensionDTO).filter(java.util.Objects::nonNull).toList();
     }
 
     DimensionBindingDTO toDimensionBindingDTO(DimensionBinding binding);

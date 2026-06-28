@@ -5,6 +5,7 @@ import com.cyan.stargaze.metric.application.dimension.bo.DimensionDetailBO;
 import com.cyan.stargaze.metric.application.dimension.cmd.DimensionBindingCmd;
 import com.cyan.stargaze.metric.application.dimension.cmd.DimensionCmd;
 import com.cyan.stargaze.metric.client.dto.DimensionPreviewResponseDTO;
+import com.cyan.stargaze.metric.client.dto.ValidationResultDTO;
 import com.cyan.stargaze.metric.domain.dimension.Dimension;
 import com.cyan.stargaze.metric.domain.dimension.DimensionBinding;
 
@@ -63,4 +64,12 @@ public interface DimensionService {
      * @return 预览结果
      */
     DimensionPreviewResponseDTO preview(String id);
+
+    /**
+     * 校验维度编码列表(存在且已发布)。
+     *
+     * @param dimCodes 维度业务编码列表
+     * @return 校验结果
+     */
+    ValidationResultDTO validate(List<String> dimCodes);
 }

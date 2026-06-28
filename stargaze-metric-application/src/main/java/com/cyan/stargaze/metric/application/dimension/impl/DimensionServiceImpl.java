@@ -8,6 +8,7 @@ import com.cyan.arch.common.api.SilentException;
 import com.cyan.stargaze.dataset.client.DatasetClient;
 import com.cyan.stargaze.metric.application.MetricAppConvert;
 import com.cyan.stargaze.metric.client.dto.DimensionPreviewResponseDTO;
+import com.cyan.stargaze.metric.client.dto.ValidationResultDTO;
 import com.cyan.stargaze.query.client.QueryClient;
 import com.cyan.stargaze.query.client.dto.QueryResult;
 import com.cyan.stargaze.query.client.dto.SimpleQueryRequest;
@@ -88,6 +89,24 @@ public class DimensionServiceImpl implements DimensionService {
     @Override
     public List<DimensionDetailBO> listDetail(boolean publishedOnly) {
         return list(publishedOnly).stream().map(this::buildDetail).toList();
+    }
+
+    @Override
+    public ValidationResultDTO validate(List<String> dimCodes) {
+        if (dimCodes == null || dimCodes.isEmpty()) {
+            return new ValidationResultDTO().setValid(true);
+        }
+        java.util.Set<String> publishedCodes = list(true).stream()
+                .map(Dimension::getCode)
+                .collect(java.util.stream.Collectors.toSet());
+        List<String> missing = dimCodes.stream()
+                .filter(c -> c != null && !publishedCodes.contains(c))
+                .toList();
+        if (missing.isEmpty()) {
+            return new ValidationResultDTO().setValid(true);
+        }
+        return new ValidationResultDTO().setValid(false)
+                .setReason("维度未发布或不存在: " + String.join(",", missing));
     }
 
     @Override

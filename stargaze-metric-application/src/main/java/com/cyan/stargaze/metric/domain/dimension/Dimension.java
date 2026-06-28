@@ -158,6 +158,21 @@ public class Dimension {
     }
 
     /**
+     * 来源类型展示标签(供前端资产面板来源筛选)。
+     */
+    public String sourceTypeLabel() {
+        if (this.sourceType == null) {
+            return null;
+        }
+        return switch (this.sourceType) {
+            case DATASET -> "数据集";
+            case PORTRAIT_FEATURE, PORTRAIT_TAG, PORTRAIT_CROWD -> "画像平台";
+            case REALTIME_TABLE -> "实时表";
+            case HTTP_API -> "HTTP API";
+        };
+    }
+
+    /**
      * 维度显示名(业务名优先)。
      */
     public String displayName() {
