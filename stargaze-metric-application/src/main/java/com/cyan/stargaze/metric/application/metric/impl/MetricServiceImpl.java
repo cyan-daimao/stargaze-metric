@@ -224,6 +224,12 @@ public class MetricServiceImpl implements MetricService {
                     Object firstVal = data.getRows().get(0).get(lastCol);
                     if (firstVal instanceof Number num) {
                         response.setValue(num.doubleValue());
+                    } else if (firstVal instanceof String str) {
+                        try {
+                            response.setValue(Double.parseDouble(str));
+                        } catch (NumberFormatException ignored) {
+                            // 非数字字符串无法转为单值,保持 null 由兜底赋值
+                        }
                     }
                 }
             }
