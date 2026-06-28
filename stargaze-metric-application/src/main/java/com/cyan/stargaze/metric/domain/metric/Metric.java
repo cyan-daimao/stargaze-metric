@@ -162,10 +162,11 @@ public class Metric {
     }
 
     /**
-     * 发布:draft → published
+     * 发布:draft/offline → published(下线态可重新上线)
      */
     public Metric publish(MetricRepository repository) {
-        Assert.isTrue(this.status == MetricStatus.DRAFT, new SilentException("仅草稿状态可发布"));
+        Assert.isTrue(this.status == MetricStatus.DRAFT || this.status == MetricStatus.OFFLINE,
+                new SilentException("仅草稿或下线状态可发布"));
         this.status = MetricStatus.PUBLISHED;
         this.updatedAt = OffsetDateTime.now();
         return repository.update(this);
@@ -189,10 +190,11 @@ public class Metric {
     }
 
     /**
-     * 是否可用(draft/published)
+     * 是否可预览(draft/published/offline;下线态也允许预览)
      */
     public boolean isAvailable() {
-        return this.status == MetricStatus.DRAFT || this.status == MetricStatus.PUBLISHED;
+        return this.status == MetricStatus.DRAFT || this.status == MetricStatus.PUBLISHED
+                || this.status == MetricStatus.OFFLINE;
     }
 
     public void delete(MetricRepository repository) {
