@@ -143,6 +143,13 @@ public class DimensionServiceImpl implements DimensionService {
 
     @Override
     @Transactional
+    public Dimension offline(String id) {
+        Dimension dimension = findById(id);
+        return dimension.offline(dimensionRepository);
+    }
+
+    @Override
+    @Transactional
     public DimensionBinding addBinding(DimensionBindingCmd cmd) {
         DimensionBinding binding = convert.toDimensionBinding(cmd);
         binding.validate();

@@ -48,6 +48,14 @@ public interface DimensionService {
 
     Dimension publish(String id);
 
+    /**
+     * 下线维度(已发布 -> 已下线)。
+     *
+     * @param id 维度 ID
+     * @return 下线后的维度
+     */
+    Dimension offline(String id);
+
     DimensionBinding addBinding(DimensionBindingCmd cmd);
 
     void removeBinding(String bindingId);

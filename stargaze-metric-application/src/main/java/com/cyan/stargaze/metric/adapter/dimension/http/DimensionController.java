@@ -94,6 +94,11 @@ public class DimensionController {
     return Response.success(adapterConvert.toDimensionDTO(dimensionService.publish(id)));
   }
 
+  @PostMapping("/{id}/offline")
+  public Response<DimensionDTO> offline(@PathVariable String id) {
+    return Response.success(adapterConvert.toDimensionDTO(dimensionService.offline(id)));
+  }
+
   @PostMapping("/{id}/bindings")
   public Response<DimensionBindingDTO> addBinding(@PathVariable("id") String dimensionId,
       @RequestBody @Valid DimensionBindingCmd cmd) {
