@@ -29,18 +29,8 @@ public enum MetricSourceType {
     HTTP_API("HTTP_API");
 
     @EnumValue
-    private final String code;
-
     @JsonValue
-    public String toJsonValue() {
-        String[] parts = code.split("_");
-        StringBuilder sb = new StringBuilder(parts[0].toLowerCase());
-        for (int i = 1; i < parts.length; i++) {
-            sb.append(parts[i].substring(0, 1));
-            sb.append(parts[i].substring(1).toLowerCase());
-        }
-        return sb.toString();
-    }
+    private final String code;
 
     @JsonCreator
     public static MetricSourceType fromCode(String code) {
