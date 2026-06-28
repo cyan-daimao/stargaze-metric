@@ -199,39 +199,32 @@ public class MetricServiceImpl implements MetricService {
 
             // 通过 query 网关执行预览 SQL
             if (metric.getSourceType() == MetricSourceType.DATASET) {
-                try {
-                    String fieldCode = metric.aggregateFieldCode();
-                    String aggFunc = metric.aggregateFunction();
-                    log.info("预览执行 metricCode={}, tableName={}, fieldCode={}, aggFunc={}, dimFields={}",
-                            metricCode, metric.getSourceCode(), fieldCode, aggFunc, dimFields);
-                    QueryPreviewRequest qReq = new QueryPreviewRequest()
-                            .setMetricCode(metricCode)
-                            .setTableName(metric.getSourceCode())
-                            .setFieldCode(StringUtils.hasText(fieldCode) ? fieldCode : "value")
-                            .setAggFunction(StringUtils.hasText(aggFunc) ? aggFunc : "sum")
-                            .setDimensionFields(dimFields)
-                            .setLimit(5);
-                    Response<QueryResult> qResp = queryClient.preview(qReq);
-                    log.info("预览执行结果 metricCode={}, code={}, data={}",
-                            metricCode, qResp != null ? qResp.getCode() : "null",
-                            qResp != null && qResp.getData() != null ? "hasData" : "noData");
-                    if (qResp != null && qResp.getCode() == 200 && qResp.getData() != null) {
-                        QueryResult data = qResp.getData();
-                        response.setColumns(data.getColumns())
-                                .setRows(data.getRows())
-                                .setExecutionTime(data.getCostMs() != null ? data.getCostMs() / 1000.0 : null);
-                        // 提取首行末尾列(聚合结果)作为单值
-                        if (data.getColumns() != null && !data.getColumns().isEmpty()
-                                && data.getRows() != null && !data.getRows().isEmpty()) {
-                            String lastCol = data.getColumns().get(data.getColumns().size() - 1);
-                            Object firstVal = data.getRows().get(0).get(lastCol);
-                            if (firstVal instanceof Number num) {
-                                response.setValue(num.doubleValue());
-                            }
-                        }
+                String fieldCode = metric.aggregateFieldCode();
+                String aggFunc = metric.aggregateFunction();
+                log.info("预览执行 metricCode={}, datasetId={}, fieldCode={}, aggFunc={}, dimFields={}",
+                        metricCode, metric.getSourceCode(), fieldCode, aggFunc, dimFields);
+                QueryPreviewRequest qReq = new QueryPreviewRequest()
+                        .setMetricCode(metricCode)
+                        .setDatasetId(metric.getSourceCode())
+                        .setFieldCode(StringUtils.hasText(fieldCode) ? fieldCode : "value")
+                        .setAggFunction(StringUtils.hasText(aggFunc) ? aggFunc : "sum")
+                        .setDimensionFields(dimFields)
+                        .setLimit(5);
+                Response<QueryResult> qResp = queryClient.preview(qReq);
+                Assert.isTrue(qResp != null && qResp.getCode() == 200 && qResp.getData() != null,
+                        new SilentException("指标预览查询失败: " + (qResp == null ? "无响应" : qResp.getMessage())));
+                QueryResult data = qResp.getData();
+                response.setColumns(data.getColumns())
+                        .setRows(data.getRows())
+                        .setExecutionTime(data.getCostMs() != null ? data.getCostMs() / 1000.0 : null);
+                // 提取首行末尾列(聚合结果)作为单值
+                if (data.getColumns() != null && !data.getColumns().isEmpty()
+                        && data.getRows() != null && !data.getRows().isEmpty()) {
+                    String lastCol = data.getColumns().get(data.getColumns().size() - 1);
+                    Object firstVal = data.getRows().get(0).get(lastCol);
+                    if (firstVal instanceof Number num) {
+                        response.setValue(num.doubleValue());
                     }
-                } catch (Exception e) {
-                    log.error("预览 SQL 执行失败 metricCode={}", metricCode, e);
                 }
             }
             if (response.getValue() == null) {
@@ -278,6 +271,7 @@ public class MetricServiceImpl implements MetricService {
         DatasetListItemDTO dataset = findDatasetById(datasetId);
         Assert.notNull(dataset, new SilentException("数据集不存在"));
         String datasetCode = StringUtils.hasText(dataset.getName()) ? dataset.getName() : datasetId;
+        String datasetSourceCode = datasetId;
 
         Response<List<DatasetFieldDTO>> fieldsResp = datasetClient.listFields(datasetId);
         Assert.isTrue(fieldsResp != null && fieldsResp.getCode() == 200 && fieldsResp.getData() != null,
@@ -302,12 +296,12 @@ public class MetricServiceImpl implements MetricService {
                 continue;
             }
             if (field.getFieldType() == FieldType.MEASURE) {
-                MetricSyncResultDTO.DuplicateMetricDTO duplicate = syncMetric(dataset, datasetCode, field, operator, createdMetrics);
+                MetricSyncResultDTO.DuplicateMetricDTO duplicate = syncMetric(dataset, datasetCode, datasetSourceCode, field, operator, createdMetrics);
                 if (duplicate != null) {
                     duplicateMetrics.add(duplicate);
                 }
             } else if (field.getFieldType() == FieldType.DIMENSION) {
-                MetricSyncResultDTO.DuplicateDimensionDTO duplicate = syncDimension(dataset, datasetId, datasetCode, field, operator, createdDimensions);
+                MetricSyncResultDTO.DuplicateDimensionDTO duplicate = syncDimension(dataset, datasetId, datasetCode, datasetSourceCode, field, operator, createdDimensions);
                 if (duplicate != null) {
                     duplicateDimensions.add(duplicate);
                 }
@@ -505,11 +499,18 @@ public class MetricServiceImpl implements MetricService {
         return resp.getData().getData().stream()
                 .map(item -> new BindableSourceDTO()
                         .setSourceType(MetricSourceType.DATASET)
-                        .setSourceCode(item.getName())
+                        .setSourceCode(item.getId())
                         .setSourceName(StringUtils.hasText(item.getDisplayName()) ? item.getDisplayName() : item.getName())
-                        .setExtra(Map.of("status", String.valueOf(item.getStatus()),
-                                "fieldCount", item.getFieldCount())))
+                        .setExtra(datasetSourceExtra(item)))
                 .collect(Collectors.toList());
+    }
+
+    private Map<String, Object> datasetSourceExtra(DatasetListItemDTO item) {
+        Map<String, Object> extra = new LinkedHashMap<>();
+        extra.put("status", item.getStatus());
+        extra.put("fieldCount", item.getFieldCount());
+        extra.put("datasetName", item.getName());
+        return extra;
     }
 
     private List<BindableSourceDTO> defaultBindableSources(MetricSourceType sourceType) {
@@ -628,6 +629,7 @@ public class MetricServiceImpl implements MetricService {
 
     private MetricSyncResultDTO.DuplicateMetricDTO syncMetric(DatasetListItemDTO dataset,
                                                               String datasetCode,
+                                                              String datasetSourceCode,
                                                               DatasetFieldDTO field,
                                                               String operator,
                                                               List<com.cyan.stargaze.metric.client.dto.MetricDTO> createdMetrics) {
@@ -664,7 +666,7 @@ public class MetricServiceImpl implements MetricService {
                 .setCode(uniqueCode)
                 .setDescription("从数据集 " + datasetDisplayName + " 同步生成")
                 .setSourceType(MetricSourceType.DATASET)
-                .setSourceCode(datasetCode)
+                .setSourceCode(datasetSourceCode)
                 .setSourceName(datasetDisplayName)
                 .setQueryMode(QueryMode.OLAP)
                 .setDslKind(MetricDslKind.ATOMIC)
@@ -680,6 +682,7 @@ public class MetricServiceImpl implements MetricService {
     private MetricSyncResultDTO.DuplicateDimensionDTO syncDimension(DatasetListItemDTO dataset,
                                                                     String datasetId,
                                                                     String datasetCode,
+                                                                    String datasetSourceCode,
                                                                     DatasetFieldDTO field,
                                                                     String operator,
                                                                     List<DimensionDTO> createdDimensions) {
@@ -700,7 +703,7 @@ public class MetricServiceImpl implements MetricService {
                 .setCode(dimCode)
                 .setSemanticType(Dimension.inferSemanticType(field.getSemanticType()))
                 .setSourceType(MetricSourceType.DATASET)
-                .setSourceCode(datasetCode)
+                .setSourceCode(datasetSourceCode)
                 .setSourceName(datasetDisplayName)
                 .setQueryMode(QueryMode.OLAP)
                 .setDslKind(MetricDslKind.FIELD)
