@@ -45,6 +45,7 @@ import com.cyan.stargaze.metric.enums.MetricDslKind;
 import com.cyan.stargaze.metric.enums.MetricSourceType;
 import com.cyan.stargaze.metric.enums.MetricStatus;
 import com.cyan.stargaze.metric.enums.QueryMode;
+import com.cyan.stargaze.metric.enums.Freshness;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -507,6 +508,8 @@ public class MetricServiceImpl implements MetricService {
                         .setSourceType(MetricSourceType.DATASET)
                         .setSourceCode(item.getId())
                         .setSourceName(StringUtils.hasText(item.getDisplayName()) ? item.getDisplayName() : item.getName())
+                        .setQueryMode(QueryMode.OLAP)
+                        .setFreshness(Freshness.OFFLINE)
                         .setExtra(datasetSourceExtra(item)))
                 .collect(Collectors.toList());
     }
@@ -524,38 +527,58 @@ public class MetricServiceImpl implements MetricService {
             case PORTRAIT_FEATURE -> List.of(
                     new BindableSourceDTO().setSourceType(sourceType)
                             .setSourceCode("FEAT_30D_CONSUME_AMOUNT")
-                            .setSourceName("用户近30天消费金额"),
+                            .setSourceName("用户近30天消费金额")
+                            .setQueryMode(QueryMode.OLAP)
+                            .setFreshness(Freshness.OFFLINE),
                     new BindableSourceDTO().setSourceType(sourceType)
                             .setSourceCode("FEAT_7D_VISIT_COUNT")
-                            .setSourceName("用户近7天访问次数"));
+                            .setSourceName("用户近7天访问次数")
+                            .setQueryMode(QueryMode.OLAP)
+                            .setFreshness(Freshness.OFFLINE));
             case PORTRAIT_TAG -> List.of(
                     new BindableSourceDTO().setSourceType(sourceType)
                             .setSourceCode("TAG_USER_LEVEL")
-                            .setSourceName("用户价值分层"),
+                            .setSourceName("用户价值分层")
+                            .setQueryMode(QueryMode.OLAP)
+                            .setFreshness(Freshness.OFFLINE),
                     new BindableSourceDTO().setSourceType(sourceType)
                             .setSourceCode("TAG_LIFE_CYCLE")
-                            .setSourceName("生命周期阶段"));
+                            .setSourceName("生命周期阶段")
+                            .setQueryMode(QueryMode.OLAP)
+                            .setFreshness(Freshness.OFFLINE));
             case PORTRAIT_CROWD -> List.of(
                     new BindableSourceDTO().setSourceType(sourceType)
                             .setSourceCode("CROWD_HIGH_VALUE_USER")
-                            .setSourceName("高价值用户人群"),
+                            .setSourceName("高价值用户人群")
+                            .setQueryMode(QueryMode.OLAP)
+                            .setFreshness(Freshness.OFFLINE),
                     new BindableSourceDTO().setSourceType(sourceType)
                             .setSourceCode("CROWD_CHURN_RISK")
-                            .setSourceName("潜在流失人群"));
+                            .setSourceName("潜在流失人群")
+                            .setQueryMode(QueryMode.OLAP)
+                            .setFreshness(Freshness.OFFLINE));
             case REALTIME_TABLE -> List.of(
                     new BindableSourceDTO().setSourceType(sourceType)
                             .setSourceCode("RT_EVENT_CLICK_1MIN")
-                            .setSourceName("实时点击事件分钟表"),
+                            .setSourceName("实时点击事件分钟表")
+                            .setQueryMode(QueryMode.OLAP)
+                            .setFreshness(Freshness.REALTIME),
                     new BindableSourceDTO().setSourceType(sourceType)
                             .setSourceCode("RT_ORDER_PAY_1MIN")
-                            .setSourceName("实时支付事件分钟表"));
+                            .setSourceName("实时支付事件分钟表")
+                            .setQueryMode(QueryMode.OLAP)
+                            .setFreshness(Freshness.REALTIME));
             case HTTP_API -> List.of(
                     new BindableSourceDTO().setSourceType(sourceType)
                             .setSourceCode("API_RISK_SCORE")
-                            .setSourceName("实时风控分"),
+                            .setSourceName("实时风控分")
+                            .setQueryMode(QueryMode.POINT_LOOKUP)
+                            .setFreshness(Freshness.REALTIME),
                     new BindableSourceDTO().setSourceType(sourceType)
                             .setSourceCode("API_USER_PROFILE")
-                            .setSourceName("用户画像服务"));
+                            .setSourceName("用户画像服务")
+                            .setQueryMode(QueryMode.POINT_LOOKUP)
+                            .setFreshness(Freshness.REALTIME));
             default -> Collections.emptyList();
         };
     }

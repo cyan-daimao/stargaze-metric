@@ -1,6 +1,8 @@
 package com.cyan.stargaze.metric.client.dto;
 
+import com.cyan.stargaze.metric.enums.Freshness;
 import com.cyan.stargaze.metric.enums.MetricSourceType;
+import com.cyan.stargaze.metric.enums.QueryMode;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -28,6 +30,12 @@ public class BindableSourceDTO {
 
     /** 来源名称 */
     private String sourceName;
+
+    /** 查询能力 */
+    private QueryMode queryMode;
+
+    /** 数据新鲜度 */
+    private Freshness freshness;
 
     /** 扩展属性 */
     private Map<String, Object> extra;
